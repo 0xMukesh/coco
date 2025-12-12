@@ -1,8 +1,6 @@
 package lexer
 
 import (
-	"fmt"
-
 	"github.com/0xmukesh/coco/internal/tokens"
 	"github.com/0xmukesh/coco/internal/utils"
 )
@@ -119,8 +117,4 @@ func (l *Lexer) NextToken() tokens.Token {
 
 	l.readChar()
 	return token
-}
-
-func (l *Lexer) String() string {
-	return fmt.Sprintf("Lexer{input:%s, position:%d, readPosition:%d, ch:%q}", l.input, l.position, l.readPosition, l.ch)
 }

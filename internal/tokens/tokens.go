@@ -40,10 +40,10 @@ const (
 	LET      = "LET"
 	CONSTANT = "CONSTANT"
 	TRUE     = "TRUE"
-	FALSE    = "false"
-	IF       = "if"
-	ELSE     = "else"
-	RETURN   = "return"
+	FALSE    = "FALSE"
+	IF       = "IF"
+	ELSE     = "ELSE"
+	RETURN   = "RETURN"
 )
 
 var KEYWORDS = map[string]TokenType{
