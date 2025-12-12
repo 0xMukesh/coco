@@ -7,13 +7,17 @@ import (
 )
 
 func TestNextToken(t *testing.T) {
-	input := `let x = 5;
-let y = 10;
+	input := `let x = 2;
+let y = 3;
 let z = x + y;
+let u = 7;
 
 fn sum(a, b) {
   a + b;
-}`
+}
+
+let isEquals = sum(x, y) == z;
+let notEquals = sum(x, y) != u;`
 
 	tests := []struct {
 		expectedType    tokens.TokenType
@@ -22,12 +26,12 @@ fn sum(a, b) {
 		{tokens.LET, "let"},
 		{tokens.IDENTIFIER, "x"},
 		{tokens.ASSIGN, "="},
-		{tokens.INT, "5"},
+		{tokens.INT, "2"},
 		{tokens.SEMICOLON, ";"},
 		{tokens.LET, "let"},
 		{tokens.IDENTIFIER, "y"},
 		{tokens.ASSIGN, "="},
-		{tokens.INT, "10"},
+		{tokens.INT, "3"},
 		{tokens.SEMICOLON, ";"},
 		{tokens.LET, "let"},
 		{tokens.IDENTIFIER, "z"},
@@ -35,6 +39,11 @@ fn sum(a, b) {
 		{tokens.IDENTIFIER, "x"},
 		{tokens.PLUS, "+"},
 		{tokens.IDENTIFIER, "y"},
+		{tokens.SEMICOLON, ";"},
+		{tokens.LET, "let"},
+		{tokens.IDENTIFIER, "u"},
+		{tokens.ASSIGN, "="},
+		{tokens.INT, "7"},
 		{tokens.SEMICOLON, ";"},
 		{tokens.FUNCTION, "fn"},
 		{tokens.IDENTIFIER, "sum"},
@@ -49,6 +58,30 @@ fn sum(a, b) {
 		{tokens.IDENTIFIER, "b"},
 		{tokens.SEMICOLON, ";"},
 		{tokens.RBRACE, "}"},
+		{tokens.LET, "let"},
+		{tokens.IDENTIFIER, "isEquals"},
+		{tokens.ASSIGN, "="},
+		{tokens.IDENTIFIER, "sum"},
+		{tokens.LPAREN, "("},
+		{tokens.IDENTIFIER, "x"},
+		{tokens.COMMA, ","},
+		{tokens.IDENTIFIER, "y"},
+		{tokens.RPAREN, ")"},
+		{tokens.EQUALS, "=="},
+		{tokens.IDENTIFIER, "z"},
+		{tokens.SEMICOLON, ";"},
+		{tokens.LET, "let"},
+		{tokens.IDENTIFIER, "notEquals"},
+		{tokens.ASSIGN, "="},
+		{tokens.IDENTIFIER, "sum"},
+		{tokens.LPAREN, "("},
+		{tokens.IDENTIFIER, "x"},
+		{tokens.COMMA, ","},
+		{tokens.IDENTIFIER, "y"},
+		{tokens.RPAREN, ")"},
+		{tokens.NOT_EQUALS, "!="},
+		{tokens.IDENTIFIER, "u"},
+		{tokens.SEMICOLON, ";"},
 		{tokens.EOF, ""},
 	}
 

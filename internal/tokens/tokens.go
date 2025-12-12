@@ -21,21 +21,40 @@ const (
 
 	COMMA     = ","
 	SEMICOLON = ";"
+	BANG      = "!"
+	SLASH     = "/"
+	ASTERISK  = "*"
+
+	LESS_THAN    = "<"
+	GREATER_THAN = ">"
 
 	LPAREN = "("
 	RPAREN = ")"
 	LBRACE = "{"
 	RBRACE = "}"
 
+	EQUALS     = "=="
+	NOT_EQUALS = "!="
+
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
 	CONSTANT = "CONSTANT"
+	TRUE     = "TRUE"
+	FALSE    = "false"
+	IF       = "if"
+	ELSE     = "else"
+	RETURN   = "return"
 )
 
 var KEYWORDS = map[string]TokenType{
-	"fn":    FUNCTION,
-	"let":   LET,
-	"const": CONSTANT,
+	"fn":     FUNCTION,
+	"let":    LET,
+	"const":  CONSTANT,
+	"true":   TRUE,
+	"false":  FALSE,
+	"if":     IF,
+	"else":   ELSE,
+	"return": RETURN,
 }
 
 func New(tokenType TokenType, literal string) Token {

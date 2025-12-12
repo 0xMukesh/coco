@@ -32,6 +32,14 @@ func (l *Lexer) readChar() byte {
 	return l.ch
 }
 
+func (l *Lexer) seekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.readPosition]
+	}
+}
+
 func (l *Lexer) readContinuous(f func(byte) bool) string {
 	starting := l.position
 
@@ -56,7 +64,13 @@ func (l *Lexer) NextToken() tokens.Token {
 
 	switch l.ch {
 	case '=':
-		token = tokens.New(tokens.ASSIGN, string(l.ch))
+		if l.seekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			token = tokens.New(tokens.EQUALS, string(ch)+string(l.ch))
+		} else {
+			token = tokens.New(tokens.ASSIGN, string(l.ch))
+		}
 	case '+':
 		token = tokens.New(tokens.PLUS, string(l.ch))
 	case '-':
@@ -65,6 +79,22 @@ func (l *Lexer) NextToken() tokens.Token {
 		token = tokens.New(tokens.COMMA, string(l.ch))
 	case ';':
 		token = tokens.New(tokens.SEMICOLON, string(l.ch))
+	case '!':
+		if l.seekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			token = tokens.New(tokens.NOT_EQUALS, string(ch)+string(l.ch))
+		} else {
+			token = tokens.New(tokens.BANG, string(l.ch))
+		}
+	case '/':
+		token = tokens.New(tokens.SLASH, string(l.ch))
+	case '*':
+		token = tokens.New(tokens.ASTERISK, string(l.ch))
+	case '<':
+		token = tokens.New(tokens.LESS_THAN, string(l.ch))
+	case '>':
+		token = tokens.New(tokens.GREATER_THAN, string(l.ch))
 	case '(':
 		token = tokens.New(tokens.LPAREN, string(l.ch))
 	case ')':
