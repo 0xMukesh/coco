@@ -3,8 +3,11 @@ package tokens
 type TokenType string
 
 type Token struct {
-	Type    TokenType
-	Literal string
+	Type          TokenType
+	Literal       string
+	Line          int
+	StartPosition int
+	EndPosition   int
 }
 
 const (
@@ -57,10 +60,13 @@ var KEYWORDS = map[string]TokenType{
 	"return": RETURN,
 }
 
-func New(tokenType TokenType, literal string) Token {
+func New(tokenType TokenType, literal string, line, startPosition, endPosition int) Token {
 	return Token{
-		Type:    tokenType,
-		Literal: literal,
+		Type:          tokenType,
+		Literal:       literal,
+		Line:          line,
+		StartPosition: startPosition,
+		EndPosition:   endPosition,
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/0xmukesh/coco/internal/lexer"
-	"github.com/0xmukesh/coco/internal/tokens"
 )
 
 func Start(r io.Reader, w io.Writer) {
@@ -25,9 +24,10 @@ func Start(r io.Reader, w io.Writer) {
 		}
 
 		l := lexer.New(line)
+		tks := l.Tokenize()
 
-		for tok := l.NextToken(); tok.Type != tokens.EOF; tok = l.NextToken() {
-			fmt.Printf("%+v\n", tok)
+		for _, t := range tks {
+			fmt.Printf("%+v\n", t)
 		}
 	}
 }
