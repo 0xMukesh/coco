@@ -1,5 +1,7 @@
 package ast
 
+import "github.com/0xmukesh/coco/internal/tokens"
+
 type Node interface {
 	NodeLiteral() string
 }
@@ -23,4 +25,37 @@ type Program struct {
 
 func (p Program) NodeLiteral() string {
 	return "RootNode"
+}
+
+// expressions
+type IdentifierExpression struct {
+	Token tokens.Token
+	Value string
+}
+
+func (i *IdentifierExpression) expressionNode() {}
+func (i *IdentifierExpression) NodeLiteral() string {
+	return i.Token.Literal
+}
+
+// statements
+type LetStatement struct {
+	Token      tokens.Token
+	Identifier *IdentifierExpression
+	Value      Expression
+}
+
+func (l *LetStatement) statementNode() {}
+func (l *LetStatement) NodeLiteral() string {
+	return l.Token.Literal
+}
+
+type ReturnStatement struct {
+	Token tokens.Token
+	Value Expression
+}
+
+func (r *ReturnStatement) statementNode() {}
+func (r *ReturnStatement) NodeLiteral() string {
+	return r.Token.Literal
 }

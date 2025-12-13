@@ -10,11 +10,10 @@ type Lexer struct {
 	currentPosition int
 	peekPosition    int
 	currChar        byte
-	currLine        int
 }
 
 func New(input string) *Lexer {
-	l := Lexer{input: input}
+	l := Lexer{input: input, currentPosition: 0, peekPosition: 0}
 	l.readChar()
 
 	return &l
@@ -44,6 +43,7 @@ func (l *Lexer) readChar() byte {
 
 	l.currentPosition = l.peekPosition
 	l.peekPosition++
+
 	return l.currChar
 }
 
@@ -58,12 +58,11 @@ func (l *Lexer) seekChar() byte {
 func (l *Lexer) readContinuous(f func(byte) bool) string {
 	starting := l.currentPosition
 
-	for f(l.currChar) {
+	for f(l.seekChar()) {
 		l.readChar()
 	}
 
-	// l.peekPosition = l.currentPosition
-	return l.input[starting:l.currentPosition]
+	return l.input[starting:l.peekPosition]
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -74,10 +73,6 @@ func (l *Lexer) skipWhitespace() {
 
 func (l *Lexer) nextToken() tokens.Token {
 	var token tokens.Token
-
-	if l.currChar == '\n' {
-		l.currLine++
-	}
 
 	l.skipWhitespace()
 
@@ -139,9 +134,9 @@ func (l *Lexer) nextToken() tokens.Token {
 }
 
 func (l *Lexer) constructSingleCharToken(tokenType tokens.TokenType) tokens.Token {
-	return tokens.New(tokenType, string(l.currChar), l.currLine, l.currentPosition, l.currentPosition+1)
+	return tokens.New(tokenType, string(l.currChar))
 }
 
 func (l *Lexer) constructMultiCharToken(literal string, tokenType tokens.TokenType) tokens.Token {
-	return tokens.New(tokenType, literal, l.currLine, l.currentPosition-len(literal), l.currentPosition)
+	return tokens.New(tokenType, literal)
 }

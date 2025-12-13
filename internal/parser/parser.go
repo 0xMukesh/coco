@@ -79,7 +79,6 @@ func (p *Parser) expectPeek(t tokens.TokenType) bool {
 		return true
 	} else {
 		peekTok := p.peekToken()
-		fmt.Printf("%+v\n", peekTok)
 		p.errors = append(p.errors, fmt.Sprintf("expected next token to be %s, got %s instead", t, peekTok.Literal))
 		return false
 	}
@@ -88,12 +87,47 @@ func (p *Parser) expectPeek(t tokens.TokenType) bool {
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.currTok.Type {
 	case tokens.LET:
-		if ls := p.parseLetStatement(); ls != nil {
-			return ls
-		}
-
-		return nil
+		return p.parseLetStatement()
+	case tokens.RETURN:
+		return p.parseReturnStatement()
 	default:
 		return nil
 	}
+}
+
+func (p *Parser) parseLetStatement() *ast.LetStatement {
+	if p.currTok == nil {
+		return nil
+	}
+
+	stmt := &ast.LetStatement{Token: *p.currTok}
+	if !p.expectPeek(tokens.IDENTIFIER) {
+		return nil
+	}
+
+	stmt.Identifier = &ast.IdentifierExpression{Token: *p.currTok, Value: p.currTok.Literal}
+	if !p.expectPeek(tokens.ASSIGN) {
+		return nil
+	}
+
+	for !p.currTokenIs(tokens.SEMICOLON) {
+		p.readToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
+	if p.currTok == nil {
+		return nil
+	}
+
+	stmt := &ast.ReturnStatement{Token: *p.currTok}
+	if !p.expectPeek(tokens.IDENTIFIER) {
+		return nil
+	}
+
+	stmt.Value = &ast.IdentifierExpression{Token: *p.currTok, Value: p.currTok.Literal}
+
+	return stmt
 }
