@@ -8,8 +8,8 @@ import (
 
 func TestTokens(t *testing.T) {
 	input := `let animal = "cat";
-let six = 6;
-let seven = 7;`
+let isCat = animal == "cat";
+let isNotCat = animal != "cat";`
 	lexer := New(input)
 	tests := []struct {
 		expectedType    tokens.TokenType
@@ -23,15 +23,24 @@ let seven = 7;`
 		{tokens.QUOTES, "\""},
 		{tokens.SEMICOLON, ";"},
 		{tokens.LET, "let"},
-		{tokens.IDENTIFIER, "six"},
+		{tokens.IDENTIFIER, "isCat"},
 		{tokens.ASSIGN, "="},
-		{tokens.INTEGER, "6"},
+		{tokens.IDENTIFIER, "animal"},
+		{tokens.EQUALS, "=="},
+		{tokens.QUOTES, "\""},
+		{tokens.IDENTIFIER, "cat"},
+		{tokens.QUOTES, "\""},
 		{tokens.SEMICOLON, ";"},
 		{tokens.LET, "let"},
-		{tokens.IDENTIFIER, "seven"},
+		{tokens.IDENTIFIER, "isNotCat"},
 		{tokens.ASSIGN, "="},
-		{tokens.INTEGER, "7"},
+		{tokens.IDENTIFIER, "animal"},
+		{tokens.NOT_EQUALS, "!="},
+		{tokens.QUOTES, "\""},
+		{tokens.IDENTIFIER, "cat"},
+		{tokens.QUOTES, "\""},
 		{tokens.SEMICOLON, ";"},
+		{tokens.EOF, ""},
 	}
 
 	for i, tt := range tests {

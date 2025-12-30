@@ -34,6 +34,14 @@ func (l *Lexer) readChar() {
 	l.peekPosition += 1
 }
 
+func (l *Lexer) peekChar() byte {
+	if l.peekPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.peekPosition]
+	}
+}
+
 func (l *Lexer) readIdentifier() string {
 	startPosition := l.currentPosition
 	for utils.IsLetter(l.currChar) {
@@ -73,7 +81,23 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '/':
 		tok = tokens.New(tokens.SLASH, string(l.currChar))
 	case '=':
-		tok = tokens.New(tokens.ASSIGN, string(l.currChar))
+		if l.peekChar() == '=' {
+			tok = tokens.New(tokens.EQUALS, "==")
+			l.readChar()
+		} else {
+			tok = tokens.New(tokens.ASSIGN, string(l.currChar))
+		}
+	case '<':
+		tok = tokens.New(tokens.LESS_THAN, string(l.currChar))
+	case '>':
+		tok = tokens.New(tokens.GREATER_THAN, string(l.currChar))
+	case '!':
+		if l.peekChar() == '=' {
+			tok = tokens.New(tokens.NOT_EQUALS, "!=")
+			l.readChar()
+		} else {
+			tok = tokens.New(tokens.BANG, string(l.currChar))
+		}
 	case ',':
 		tok = tokens.New(tokens.COMMA, string(l.currChar))
 	case ';':
@@ -89,7 +113,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '}':
 		tok = tokens.New(tokens.RBRACE, string(l.currChar))
 	case 0:
-		tok = tokens.New(tokens.ILLEGAL, string(l.currChar))
+		tok = tokens.New(tokens.EOF, string(l.currChar))
 	default:
 		if utils.IsLetter(l.currChar) {
 			s := l.readIdentifier()
