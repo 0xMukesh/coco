@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"strings"
+
 	"github.com/0xmukesh/coco/internal/tokens"
 	"github.com/0xmukesh/coco/internal/utils"
 )
@@ -13,28 +15,15 @@ type Lexer struct {
 }
 
 func New(input string) *Lexer {
-	l := Lexer{input: input, currentPosition: 0, peekPosition: 0}
-	l.readChar()
-
-	return &l
-}
-
-func (l *Lexer) Tokenize() []tokens.Token {
-	tks := []tokens.Token{}
-
-	for {
-		tok := l.nextToken()
-		tks = append(tks, tok)
-
-		if tok.Type == tokens.EOF {
-			break
-		}
+	l := &Lexer{
+		input: input,
 	}
 
-	return tks
+	l.readChar()
+	return l
 }
 
-func (l *Lexer) readChar() byte {
+func (l *Lexer) readChar() {
 	if l.peekPosition >= len(l.input) {
 		l.currChar = 0
 	} else {
@@ -42,101 +31,86 @@ func (l *Lexer) readChar() byte {
 	}
 
 	l.currentPosition = l.peekPosition
-	l.peekPosition++
-
-	return l.currChar
+	l.peekPosition += 1
 }
 
-func (l *Lexer) seekChar() byte {
-	if l.peekPosition >= len(l.input) {
-		return 0
-	} else {
-		return l.input[l.peekPosition]
-	}
-}
-
-func (l *Lexer) readContinuous(f func(byte) bool) string {
-	starting := l.currentPosition
-
-	for f(l.seekChar()) {
+func (l *Lexer) readIdentifier() string {
+	startPosition := l.currentPosition
+	for utils.IsLetter(l.currChar) {
 		l.readChar()
 	}
 
-	return l.input[starting:l.peekPosition]
+	return l.input[startPosition:l.currentPosition]
+}
+
+func (l *Lexer) readDigit() string {
+	startPosition := l.currentPosition
+	for utils.IsDigit(l.currChar) {
+		l.readChar()
+	}
+
+	return l.input[startPosition:l.currentPosition]
 }
 
 func (l *Lexer) skipWhitespace() {
-	for l.currChar == ' ' || l.currChar == '\t' || l.currChar == '\n' || l.currChar == '\r' {
+	for utils.IsWhitespace(l.currChar) {
 		l.readChar()
 	}
 }
 
-func (l *Lexer) nextToken() tokens.Token {
-	var token tokens.Token
+func (l *Lexer) NextToken() tokens.Token {
+	var tok tokens.Token
 
 	l.skipWhitespace()
 
 	switch l.currChar {
-	case '=':
-		if l.seekChar() == '=' {
-			l.readChar()
-			token = l.constructMultiCharToken("==", tokens.EQUALS)
-		} else {
-			token = l.constructSingleCharToken(tokens.ASSIGN)
-		}
 	case '+':
-		token = l.constructSingleCharToken(tokens.PLUS)
+		tok = tokens.New(tokens.PLUS, string(l.currChar))
 	case '-':
-		token = l.constructSingleCharToken(tokens.MINUS)
-	case ',':
-		token = l.constructSingleCharToken(tokens.COMMA)
-	case ';':
-		token = l.constructSingleCharToken(tokens.SEMICOLON)
-	case '!':
-		if l.seekChar() == '=' {
-			l.readChar()
-			token = l.constructMultiCharToken("!=", tokens.NOT_EQUALS)
-		} else {
-			token = l.constructSingleCharToken(tokens.BANG)
-		}
-	case '/':
-		token = l.constructSingleCharToken(tokens.SLASH)
+		tok = tokens.New(tokens.MINUS, string(l.currChar))
 	case '*':
-		token = l.constructSingleCharToken(tokens.ASTERISK)
-	case '<':
-		token = l.constructSingleCharToken(tokens.LESS_THAN)
-	case '>':
-		token = l.constructSingleCharToken(tokens.GREATER_THAN)
+		tok = tokens.New(tokens.STAR, string(l.currChar))
+	case '/':
+		tok = tokens.New(tokens.SLASH, string(l.currChar))
+	case '=':
+		tok = tokens.New(tokens.ASSIGN, string(l.currChar))
+	case ',':
+		tok = tokens.New(tokens.COMMA, string(l.currChar))
+	case ';':
+		tok = tokens.New(tokens.SEMICOLON, string(l.currChar))
+	case '"':
+		tok = tokens.New(tokens.QUOTES, string(l.currChar))
 	case '(':
-		token = l.constructSingleCharToken(tokens.LPAREN)
+		tok = tokens.New(tokens.LPAREN, string(l.currChar))
 	case ')':
-		token = l.constructSingleCharToken(tokens.RPAREN)
+		tok = tokens.New(tokens.RPAREN, string(l.currChar))
 	case '{':
-		token = l.constructSingleCharToken(tokens.LBRACE)
+		tok = tokens.New(tokens.LBRACE, string(l.currChar))
 	case '}':
-		token = l.constructSingleCharToken(tokens.RBRACE)
+		tok = tokens.New(tokens.RBRACE, string(l.currChar))
 	case 0:
-		token = l.constructSingleCharToken(tokens.EOF)
+		tok = tokens.New(tokens.ILLEGAL, string(l.currChar))
 	default:
 		if utils.IsLetter(l.currChar) {
-			identStr := l.readContinuous(utils.IsLetter)
-			token = l.constructMultiCharToken(identStr, tokens.GetIdentTokenTypeByLiteral(identStr))
-		} else if utils.IsNumber(l.currChar) {
-			num := l.readContinuous(utils.IsNumber)
-			token = l.constructMultiCharToken(num, tokens.INT)
+			s := l.readIdentifier()
+			tok = tokens.New(tokens.LookupIdent(s), s)
+			// skip l.readChar call, as it happens at the last cycle of the loop
+			return tok
+		} else if utils.IsDigit(l.currChar) {
+			d := l.readDigit()
+
+			if strings.Contains(d, ".") {
+				tok = tokens.New(tokens.FLOAT, d)
+			} else {
+				tok = tokens.New(tokens.INTEGER, d)
+			}
+
+			return tok
 		} else {
-			token = l.constructSingleCharToken(tokens.ILLEGAL)
+			tok = tokens.New(tokens.ILLEGAL, string(l.currChar))
 		}
 	}
 
 	l.readChar()
-	return token
-}
-
-func (l *Lexer) constructSingleCharToken(tokenType tokens.TokenType) tokens.Token {
-	return tokens.New(tokenType, string(l.currChar))
-}
-
-func (l *Lexer) constructMultiCharToken(literal string, tokenType tokens.TokenType) tokens.Token {
-	return tokens.New(tokenType, literal)
+	return tok
 }

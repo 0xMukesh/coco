@@ -1,9 +1,13 @@
 package utils
 
-func IsLetter(ch byte) bool {
-	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+func IsLetter(char byte) bool {
+	return ('a' <= char && char <= 'z') || ('A' <= char && char <= 'Z') || char == '_'
 }
 
-func IsNumber(ch byte) bool {
-	return '0' <= ch && ch <= '9'
+func IsDigit(char byte) bool {
+	return '0' <= char && char <= '9' || char == '.'
+}
+
+func IsWhitespace(char byte) bool {
+	return char == ' ' || char == '\t' || char == '\r' || char == '\n'
 }

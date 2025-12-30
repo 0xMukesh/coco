@@ -12,49 +12,41 @@ const (
 	EOF     = "EOF"
 
 	IDENTIFIER = "IDENTIFIER"
-	INT        = "INT"
+	INTEGER    = "INTEGER"
 	FLOAT      = "FLOAT"
 
-	ASSIGN = "="
 	PLUS   = "+"
 	MINUS  = "-"
+	STAR   = "*"
+	SLASH  = "/"
+	ASSIGN = "="
 
 	COMMA     = ","
 	SEMICOLON = ";"
-	BANG      = "!"
-	SLASH     = "/"
-	ASTERISK  = "*"
-
-	LESS_THAN    = "<"
-	GREATER_THAN = ">"
+	QUOTES    = "\""
 
 	LPAREN = "("
 	RPAREN = ")"
 	LBRACE = "{"
 	RBRACE = "}"
 
-	EQUALS     = "=="
-	NOT_EQUALS = "!="
-
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
-	CONSTANT = "CONSTANT"
-	TRUE     = "TRUE"
-	FALSE    = "FALSE"
-	IF       = "IF"
-	ELSE     = "ELSE"
-	RETURN   = "RETURN"
+	CONST    = "CONST"
 )
 
-var KEYWORDS = map[string]TokenType{
-	"fn":     FUNCTION,
-	"let":    LET,
-	"const":  CONSTANT,
-	"true":   TRUE,
-	"false":  FALSE,
-	"if":     IF,
-	"else":   ELSE,
-	"return": RETURN,
+var keywords = map[string]TokenType{
+	"fn":    FUNCTION,
+	"let":   LET,
+	"const": CONST,
+}
+
+func LookupIdent(ident string) TokenType {
+	if tt, ok := keywords[ident]; ok {
+		return tt
+	}
+
+	return IDENTIFIER
 }
 
 func New(tokenType TokenType, literal string) Token {
@@ -62,12 +54,4 @@ func New(tokenType TokenType, literal string) Token {
 		Type:    tokenType,
 		Literal: literal,
 	}
-}
-
-func GetIdentTokenTypeByLiteral(literal string) TokenType {
-	if tok, ok := KEYWORDS[literal]; ok {
-		return tok
-	}
-
-	return IDENTIFIER
 }
