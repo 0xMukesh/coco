@@ -5,6 +5,7 @@ type TokenType string
 type Token struct {
 	Type    TokenType
 	Literal string
+	Line    int
 }
 
 const (
@@ -64,9 +65,10 @@ func LookupIdent(ident string) TokenType {
 	return IDENTIFIER
 }
 
-func New(tokenType TokenType, literal string) Token {
+func New(tokenType TokenType, literal string, line int) Token {
 	return Token{
 		Type:    tokenType,
 		Literal: literal,
+		Line:    line,
 	}
 }

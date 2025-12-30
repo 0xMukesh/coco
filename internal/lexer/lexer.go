@@ -12,11 +12,14 @@ type Lexer struct {
 	currentPosition int
 	peekPosition    int
 	currChar        byte
+	currLine        int
 }
 
 func New(input string) *Lexer {
 	l := &Lexer{
-		input: input,
+		input:           input,
+		currLine:        1,
+		currentPosition: 0,
 	}
 
 	l.readChar()
@@ -69,69 +72,73 @@ func (l *Lexer) skipWhitespace() {
 func (l *Lexer) NextToken() tokens.Token {
 	var tok tokens.Token
 
+	if l.currChar == '\n' {
+		l.currLine++
+	}
+
 	l.skipWhitespace()
 
 	switch l.currChar {
 	case '+':
-		tok = tokens.New(tokens.PLUS, string(l.currChar))
+		tok = tokens.New(tokens.PLUS, string(l.currChar), l.currLine)
 	case '-':
-		tok = tokens.New(tokens.MINUS, string(l.currChar))
+		tok = tokens.New(tokens.MINUS, string(l.currChar), l.currLine)
 	case '*':
-		tok = tokens.New(tokens.STAR, string(l.currChar))
+		tok = tokens.New(tokens.STAR, string(l.currChar), l.currLine)
 	case '/':
-		tok = tokens.New(tokens.SLASH, string(l.currChar))
+		tok = tokens.New(tokens.SLASH, string(l.currChar), l.currLine)
 	case '=':
 		if l.peekChar() == '=' {
-			tok = tokens.New(tokens.EQUALS, "==")
+			tok = tokens.New(tokens.EQUALS, "==", l.currLine)
 			l.readChar()
 		} else {
-			tok = tokens.New(tokens.ASSIGN, string(l.currChar))
+			tok = tokens.New(tokens.ASSIGN, string(l.currChar), l.currLine)
 		}
 	case '<':
-		tok = tokens.New(tokens.LESS_THAN, string(l.currChar))
+		tok = tokens.New(tokens.LESS_THAN, string(l.currChar), l.currLine)
 	case '>':
-		tok = tokens.New(tokens.GREATER_THAN, string(l.currChar))
+		tok = tokens.New(tokens.GREATER_THAN, string(l.currChar), l.currLine)
 	case '!':
 		if l.peekChar() == '=' {
-			tok = tokens.New(tokens.NOT_EQUALS, "!=")
+			tok = tokens.New(tokens.NOT_EQUALS, "!=", l.currLine)
 			l.readChar()
 		} else {
-			tok = tokens.New(tokens.BANG, string(l.currChar))
+			tok = tokens.New(tokens.BANG, string(l.currChar), l.currLine)
 		}
 	case ',':
-		tok = tokens.New(tokens.COMMA, string(l.currChar))
+		tok = tokens.New(tokens.COMMA, string(l.currChar), l.currLine)
 	case ';':
-		tok = tokens.New(tokens.SEMICOLON, string(l.currChar))
+		tok = tokens.New(tokens.SEMICOLON, string(l.currChar), l.currLine)
 	case '"':
-		tok = tokens.New(tokens.QUOTES, string(l.currChar))
+		tok = tokens.New(tokens.QUOTES, string(l.currChar), l.currLine)
 	case '(':
-		tok = tokens.New(tokens.LPAREN, string(l.currChar))
+		tok = tokens.New(tokens.LPAREN, string(l.currChar), l.currLine)
 	case ')':
-		tok = tokens.New(tokens.RPAREN, string(l.currChar))
+		tok = tokens.New(tokens.RPAREN, string(l.currChar), l.currLine)
 	case '{':
-		tok = tokens.New(tokens.LBRACE, string(l.currChar))
+		tok = tokens.New(tokens.LBRACE, string(l.currChar), l.currLine)
 	case '}':
-		tok = tokens.New(tokens.RBRACE, string(l.currChar))
+		tok = tokens.New(tokens.RBRACE, string(l.currChar), l.currLine)
 	case 0:
-		tok = tokens.New(tokens.EOF, string(l.currChar))
+		tok = tokens.New(tokens.EOF, string(l.currChar), l.currLine)
 	default:
 		if utils.IsLetter(l.currChar) {
 			s := l.readIdentifier()
-			tok = tokens.New(tokens.LookupIdent(s), s)
+			tok = tokens.New(tokens.LookupIdent(s), s, l.currLine)
 			// skip l.readChar call, as it happens at the last cycle of the loop
 			return tok
 		} else if utils.IsDigit(l.currChar) {
 			d := l.readDigit()
 
 			if strings.Contains(d, ".") {
-				tok = tokens.New(tokens.FLOAT, d)
+				tok = tokens.New(tokens.FLOAT, d, l.currLine)
 			} else {
-				tok = tokens.New(tokens.INTEGER, d)
+				tok = tokens.New(tokens.INTEGER, d, l.currLine)
 			}
 
 			return tok
 		} else {
-			tok = tokens.New(tokens.ILLEGAL, string(l.currChar))
+			tok = tokens.New(tokens.ILLEGAL, string(l.currChar), l.currLine)
 		}
 	}
 
