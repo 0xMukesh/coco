@@ -81,9 +81,28 @@ func (u *UnaryExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("(")
-	out.WriteString(u.Token.Literal)
-	out.WriteString(" ")
+	out.WriteString(u.Token.Literal + " ")
 	out.WriteString(u.Expression.String())
+	out.WriteString(")")
+
+	return out.String()
+}
+
+type BinaryExpression struct {
+	Token tokens.Token
+	Left  Expression
+	Right Expression
+}
+
+func (b *BinaryExpression) expressionNode()      {}
+func (b *BinaryExpression) TokenLiteral() string { return b.Token.Literal }
+func (b *BinaryExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(b.Token.Literal + " ")
+	out.WriteString(b.Left.String() + " ")
+	out.WriteString(b.Right.String())
 	out.WriteString(")")
 
 	return out.String()
