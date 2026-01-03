@@ -70,6 +70,15 @@ func (f *FloatLiteral) expressionNode()      {}
 func (f *FloatLiteral) TokenLiteral() string { return f.Token.Literal }
 func (f *FloatLiteral) String() string       { return fmt.Sprint(f.Value) }
 
+type BooleanLiteral struct {
+	Token tokens.Token // tokens.BOOLEAN
+	Value bool
+}
+
+func (b *BooleanLiteral) expressionNode()      {}
+func (b *BooleanLiteral) TokenLiteral() string { return b.Token.Literal }
+func (b *BooleanLiteral) String() string       { return fmt.Sprint(b.Value) }
+
 type UnaryExpression struct {
 	Token      tokens.Token // tokens.BANG or tokens.MINUS
 	Expression Expression
@@ -100,10 +109,36 @@ func (b *BinaryExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("(")
-	out.WriteString(b.Token.Literal + " ")
 	out.WriteString(b.Left.String() + " ")
+	out.WriteString(b.Token.Literal + " ")
 	out.WriteString(b.Right.String())
 	out.WriteString(")")
+
+	return out.String()
+}
+
+// in coco, the results of a conditional expression can be binded to be a variable
+type IfExpression struct {
+	Token       tokens.Token
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (i *IfExpression) expressionNode()      {}
+func (i *IfExpression) TokenLiteral() string { return i.Token.Literal }
+func (i *IfExpression) String() string {
+	var out bytes.Buffer
+
+	// if <condition> <consquence> (else <alternative>)
+	out.WriteString("if")
+	out.WriteString(" " + i.Condition.String() + " ")
+	out.WriteString(" " + i.Consequence.String())
+
+	if i.Alternative != nil {
+		out.WriteString(" else")
+		out.WriteString(" " + i.Alternative.String())
+	}
 
 	return out.String()
 }
@@ -145,6 +180,23 @@ func (s *ReturnStatement) String() string {
 		out.WriteString(s.Expression.String())
 	}
 	out.WriteString(";")
+
+	return out.String()
+}
+
+type BlockStatement struct {
+	Token      tokens.Token // tokens.LBRACE; start of a block
+	Statements []Statement
+}
+
+func (b *BlockStatement) statementNode()       {}
+func (b *BlockStatement) TokenLiteral() string { return b.Token.Literal }
+func (b *BlockStatement) String() string {
+	var out bytes.Buffer
+
+	for _, stmt := range b.Statements {
+		out.WriteString(stmt.String())
+	}
 
 	return out.String()
 }
