@@ -3,6 +3,7 @@ package ast
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
 )
@@ -132,13 +133,63 @@ func (i *IfExpression) String() string {
 
 	// if <condition> <consquence> (else <alternative>)
 	out.WriteString("if")
-	out.WriteString(" " + i.Condition.String() + " ")
+	out.WriteString(" " + i.Condition.String())
 	out.WriteString(" " + i.Consequence.String())
 
 	if i.Alternative != nil {
 		out.WriteString(" else")
 		out.WriteString(" " + i.Alternative.String())
 	}
+
+	return out.String()
+}
+
+type FunctionLiteral struct {
+	Token      tokens.Token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (f *FunctionLiteral) expressionNode()      {}
+func (f *FunctionLiteral) TokenLiteral() string { return f.Token.Literal }
+func (f *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	params := []string{}
+	for _, p := range f.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(f.TokenLiteral())
+	out.WriteString(" (")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+	out.WriteString(f.Body.String())
+
+	return out.String()
+}
+
+type CallExpression struct {
+	Token     tokens.Token // tokens.LPAREN
+	Function  Expression
+	Arguments []Expression
+}
+
+func (c *CallExpression) expressionNode()      {}
+func (c *CallExpression) TokenLiteral() string { return c.Token.Literal }
+func (c *CallExpression) String() string {
+	var out bytes.Buffer
+
+	args := []string{}
+
+	for _, a := range c.Arguments {
+		args = append(args, a.String())
+	}
+
+	out.WriteString(c.Function.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
 
 	return out.String()
 }
@@ -160,7 +211,6 @@ func (s *LetStatement) String() string {
 	if s.Value != nil {
 		out.WriteString(s.Value.String())
 	}
-	out.WriteString(";")
 
 	return out.String()
 }
@@ -179,7 +229,6 @@ func (s *ReturnStatement) String() string {
 	if s.Expression != nil {
 		out.WriteString(s.Expression.String())
 	}
-	out.WriteString(";")
 
 	return out.String()
 }

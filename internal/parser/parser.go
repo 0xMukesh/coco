@@ -33,6 +33,7 @@ var precedenceTable = map[tokens.TokenType]int{
 	tokens.MINUS:        SUM,
 	tokens.STAR:         PRODUCT,
 	tokens.SLASH:        PRODUCT,
+	tokens.LPAREN:       FUNCTION_CALL,
 }
 
 type Parser struct {
@@ -65,6 +66,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	p.registerPrefix(tokens.MINUS, p.parseUnaryExpression)
 	p.registerPrefix(tokens.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(tokens.IF, p.parseIfExpression)
+	p.registerPrefix(tokens.FUNCTION, p.parseFunctionLiteral)
 
 	p.registerInfix(tokens.EQUALS, p.parseBinaryExpression)
 	p.registerInfix(tokens.NOT_EQUALS, p.parseBinaryExpression)
@@ -74,6 +76,7 @@ func New(lexer *lexer.Lexer) *Parser {
 	p.registerInfix(tokens.MINUS, p.parseBinaryExpression)
 	p.registerInfix(tokens.STAR, p.parseBinaryExpression)
 	p.registerInfix(tokens.SLASH, p.parseBinaryExpression)
+	p.registerInfix(tokens.LPAREN, p.parseCallExpression)
 
 	return p
 }
@@ -99,12 +102,6 @@ func (p *Parser) expectPeek(tt tokens.TokenType) bool {
 	} else {
 		p.peekErrorBuilder(tt)
 		return false
-	}
-}
-
-func (p *Parser) readTill(tt tokens.TokenType) {
-	for !p.isCurrentToken(tt) {
-		p.readToken()
 	}
 }
 
@@ -193,6 +190,29 @@ func (p *Parser) parseUnaryExpression() ast.Expression {
 	return expr
 }
 
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	p.readToken() // consume LPAREN token
+	expr := p.parseExpression(LOWEST)
+
+	if !p.expectPeek(tokens.RPAREN) {
+		return nil
+	}
+	return expr
+}
+
+func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
+	expr := &ast.BinaryExpression{
+		Token: p.currentToken,
+		Left:  left,
+	}
+
+	precedence := p.currentPrecedence()
+	p.readToken() // consume the operator
+	expr.Right = p.parseExpression(precedence)
+
+	return expr
+}
+
 func (p *Parser) parseIfExpression() ast.Expression {
 	expr := &ast.IfExpression{
 		Token: p.currentToken,
@@ -217,25 +237,97 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	return expr
 }
 
-func (p *Parser) parseGroupedExpression() ast.Expression {
-	p.readToken() // consume LPAREN token
-	expr := p.parseExpression(LOWEST)
+func (p *Parser) parseFunctionParameters() []*ast.Identifier {
+	identifiers := []*ast.Identifier{}
+
+	if p.isNextToken(tokens.RPAREN) {
+		p.readToken()
+		return identifiers
+	}
+
+	p.readToken()
+	ident := &ast.Identifier{
+		Token: p.currentToken,
+		Value: p.currentToken.Literal,
+	}
+	identifiers = append(identifiers, ident)
+
+	for p.isNextToken(tokens.COMMA) {
+		p.readToken()
+		if !p.expectPeek(tokens.IDENTIFIER) {
+			return nil
+		}
+
+		ident := &ast.Identifier{
+			Token: p.currentToken,
+			Value: p.currentToken.Literal,
+		}
+		identifiers = append(identifiers, ident)
+
+	}
 
 	if !p.expectPeek(tokens.RPAREN) {
 		return nil
 	}
+
+	return identifiers
+}
+
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	expr := &ast.FunctionLiteral{
+		Token: p.currentToken,
+	}
+	if !p.expectPeek(tokens.LPAREN) {
+		return nil
+	}
+
+	expr.Parameters = p.parseFunctionParameters()
+	if !p.expectPeek(tokens.LBRACE) {
+		return nil
+	}
+
+	expr.Body = p.parseBlockStatement()
 	return expr
 }
 
-func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
-	expr := &ast.BinaryExpression{
-		Token: p.currentToken,
-		Left:  left,
+func (p *Parser) isValidCallArgument() bool {
+	return p.isNextToken(tokens.IDENTIFIER) || p.isNextToken(tokens.INTEGER) || p.isNextToken(tokens.FLOAT) || p.isNextToken(tokens.FUNCTION)
+}
+
+func (p *Parser) parseCallArguments() []ast.Expression {
+	args := []ast.Expression{}
+
+	if p.isNextToken(tokens.RPAREN) {
+		p.readToken()
+		return args
 	}
 
-	precedence := p.currentPrecedence()
-	p.readToken() // consume the operator
-	expr.Right = p.parseExpression(precedence)
+	if !p.isValidCallArgument() {
+		return nil
+	}
+
+	p.readToken()
+	args = append(args, p.parseExpression(LOWEST))
+
+	for p.isNextToken(tokens.COMMA) {
+		p.readToken()
+		if !p.isValidCallArgument() {
+			return nil
+		}
+		p.readToken()
+
+		args = append(args, p.parseExpression(LOWEST))
+	}
+
+	return args
+}
+
+func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+	expr := &ast.CallExpression{
+		Token:    p.currentToken,
+		Function: function,
+	}
+	expr.Arguments = p.parseCallArguments()
 
 	return expr
 }
@@ -289,8 +381,14 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	if !p.expectPeek(tokens.ASSIGN) {
 		return nil
 	}
+	p.readToken()
 
-	p.readTill(tokens.SEMICOLON)
+	stmt.Value = p.parseExpression(LOWEST)
+
+	if p.isNextToken(tokens.SEMICOLON) {
+		p.readToken()
+	}
+
 	return stmt
 }
 
@@ -298,7 +396,11 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.currentToken}
 	p.readToken()
 
-	p.readTill(tokens.SEMICOLON)
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.isNextToken(tokens.SEMICOLON) {
+		p.readToken()
+	}
 	return stmt
 }
 

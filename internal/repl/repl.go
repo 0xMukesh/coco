@@ -30,14 +30,22 @@ func Start(in io.Reader, out io.Writer, prompt string, mode string) {
 		switch mode {
 		case "lex":
 			for tok := l.NextToken(); tok.Type != tokens.EOF; tok = l.NextToken() {
-				fmt.Printf("%+v\n", tok)
+				io.WriteString(out, fmt.Sprintf("%+v\n", tok))
 			}
 		case "parse":
 			p := parser.New(l)
 			program := p.ParseProgram()
-			fmt.Printf("%s\n", program.String())
+
+			if len(p.Errors()) != 0 {
+				for _, msg := range p.Errors() {
+					io.WriteString(out, "ERR: "+msg+"\n")
+				}
+				continue
+			}
+
+			io.WriteString(out, program.String()+"\n")
 		default:
-			fmt.Printf("invalid mode")
+			io.WriteString(out, "invalid mode")
 		}
 
 	}
