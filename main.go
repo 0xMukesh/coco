@@ -1,22 +1,14 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
-	"github.com/0xmukesh/coco/internal/constants"
-	"github.com/0xmukesh/coco/internal/repl"
+	"github.com/0xmukesh/coco/cli"
 )
 
 func main() {
-	mode := flag.String("mode", constants.REPL_MODE_EVAL, "mode to run the repl on")
-	flag.Parse()
-
-	if *mode != constants.REPL_MODE_LEX && *mode != constants.REPL_MODE_PARSE && *mode != constants.REPL_MODE_EVAL {
-		fmt.Fprintf(os.Stderr, "invalid repl mode")
-		os.Exit(1)
+	if err := cli.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "an error occurred while executing program - %v", err)
 	}
-
-	repl.Start(os.Stdin, os.Stdout, "~/ ", *mode)
 }

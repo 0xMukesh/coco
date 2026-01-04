@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/0xmukesh/coco/internal/ast"
-	"github.com/0xmukesh/coco/internal/lexer"
 	"github.com/0xmukesh/coco/internal/tokens"
 )
 
@@ -39,18 +38,22 @@ var precedenceTable = map[tokens.TokenType]int{
 }
 
 type Parser struct {
-	lexer        *lexer.Lexer
-	currentToken tokens.Token
-	nextToken    tokens.Token
-	errors       []string
+	tokens          []tokens.Token
+	currentTokenIdx int
+	currentToken    tokens.Token
+	nextToken       tokens.Token
+	errors          []string
 
 	prefixParseFns map[tokens.TokenType]prefixParseFn
 	infixParseFns  map[tokens.TokenType]infixParseFn
 }
 
-func New(lexer *lexer.Lexer) *Parser {
+func New(tks []tokens.Token) *Parser {
 	p := &Parser{
-		lexer: lexer,
+		tokens:          tks,
+		currentTokenIdx: -1,
+		currentToken:    tokens.Token{Type: tokens.EOF},
+		nextToken:       tokens.Token{Type: tokens.EOF},
 	}
 
 	p.readToken()
@@ -88,7 +91,13 @@ func New(lexer *lexer.Lexer) *Parser {
 // utils
 func (p *Parser) readToken() {
 	p.currentToken = p.nextToken
-	p.nextToken = p.lexer.NextToken()
+	p.currentTokenIdx++
+
+	if p.currentTokenIdx < len(p.tokens) {
+		p.nextToken = p.tokens[p.currentTokenIdx]
+	} else {
+		p.nextToken = tokens.Token{Type: tokens.EOF}
+	}
 }
 
 func (p *Parser) isCurrentToken(tt tokens.TokenType) bool {

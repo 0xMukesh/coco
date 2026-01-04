@@ -6,55 +6,14 @@ import (
 	"github.com/0xmukesh/coco/internal/tokens"
 )
 
-var (
-	NULL = &object.Null{}
-	TRUE = &object.Boolean{
-		Value: true,
-	}
-	FALSE = &object.Boolean{
-		Value: false,
-	}
-)
-
-func Eval(node ast.Node) object.Object {
-	switch node := node.(type) {
-	case *ast.Program:
-		return evalStatements(node)
-	case *ast.ExpressionStatement:
-		return Eval(node.Expression)
-	case *ast.IntegerLiteral:
-		return &object.Integer{Value: node.Value}
-	case *ast.BooleanLiteral:
-		return nativeBoolToObjectBool(node.Value)
-	case *ast.UnaryExpression:
-		right := Eval(node.Expression)
-		return evalUnaryExpression(node.Token.Type, right)
-	case *ast.BinaryExpression:
-		left := Eval(node.Left)
-		right := Eval(node.Right)
-
-		return evalBinaryExpression(node.Token.Type, left, right)
-	}
-
-	return nil
-}
-
-func evalStatements(program *ast.Program) object.Object {
+func evalStatements(statements []ast.Statement) object.Object {
 	var result object.Object
 
-	for _, stmt := range program.Statements {
+	for _, stmt := range statements {
 		result = Eval(stmt)
 	}
 
 	return result
-}
-
-func nativeBoolToObjectBool(value bool) object.Object {
-	if value == true {
-		return TRUE
-	} else {
-		return FALSE
-	}
 }
 
 func evalUnaryExpression(operator tokens.TokenType, right object.Object) object.Object {
@@ -143,4 +102,43 @@ func evalIntegerBinaryExpression(operator tokens.TokenType, left, right object.O
 	default:
 		return NULL
 	}
+}
+
+func evalIfExpression(expression *ast.IfExpression) object.Object {
+	condition := Eval(expression.Condition)
+
+	if isTruthy(condition) {
+		return Eval(expression.Consequence)
+	} else if expression.Alternative != nil {
+		return Eval(expression.Alternative)
+	} else {
+		return NULL // FIXME: add proper error handling
+	}
+}
+
+func Eval(node ast.Node) object.Object {
+	switch node := node.(type) {
+	case *ast.Program:
+		return evalStatements(node.Statements)
+	case *ast.ExpressionStatement:
+		return Eval(node.Expression)
+	case *ast.BlockStatement:
+		return evalStatements(node.Statements)
+	case *ast.IntegerLiteral:
+		return &object.Integer{Value: node.Value}
+	case *ast.BooleanLiteral:
+		return nativeBoolToObjectBool(node.Value)
+	case *ast.UnaryExpression:
+		right := Eval(node.Expression)
+		return evalUnaryExpression(node.Token.Type, right)
+	case *ast.BinaryExpression:
+		left := Eval(node.Left)
+		right := Eval(node.Right)
+
+		return evalBinaryExpression(node.Token.Type, left, right)
+	case *ast.IfExpression:
+		return evalIfExpression(node)
+	}
+
+	return nil
 }
