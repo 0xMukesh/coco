@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/0xmukesh/coco/internal/eval"
 	"github.com/0xmukesh/coco/internal/lexer"
 	"github.com/0xmukesh/coco/internal/parser"
 	"github.com/0xmukesh/coco/internal/tokens"
@@ -44,6 +45,12 @@ func Start(in io.Reader, out io.Writer, prompt string, mode string) {
 			}
 
 			io.WriteString(out, program.String()+"\n")
+		case "eval":
+			p := parser.New(l)
+			program := p.ParseProgram()
+			res := eval.Eval(program)
+
+			io.WriteString(out, res.Inspect()+"\n")
 		default:
 			io.WriteString(out, "invalid mode")
 		}

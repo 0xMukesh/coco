@@ -25,15 +25,17 @@ const (
 )
 
 var precedenceTable = map[tokens.TokenType]int{
-	tokens.EQUALS:       EQUALS,
-	tokens.NOT_EQUALS:   EQUALS,
-	tokens.LESS_THAN:    LESS_GREATER,
-	tokens.GREATER_THAN: LESS_GREATER,
-	tokens.PLUS:         SUM,
-	tokens.MINUS:        SUM,
-	tokens.STAR:         PRODUCT,
-	tokens.SLASH:        PRODUCT,
-	tokens.LPAREN:       FUNCTION_CALL,
+	tokens.EQUALS:             EQUALS,
+	tokens.NOT_EQUALS:         EQUALS,
+	tokens.LESS_THAN:          LESS_GREATER,
+	tokens.GREATER_THAN:       LESS_GREATER,
+	tokens.LESS_THAN_EQUAL:    LESS_GREATER,
+	tokens.GREATER_THAN_EQUAL: LESS_GREATER,
+	tokens.PLUS:               SUM,
+	tokens.MINUS:              SUM,
+	tokens.STAR:               PRODUCT,
+	tokens.SLASH:              PRODUCT,
+	tokens.LPAREN:             FUNCTION_CALL,
 }
 
 type Parser struct {
@@ -72,6 +74,8 @@ func New(lexer *lexer.Lexer) *Parser {
 	p.registerInfix(tokens.NOT_EQUALS, p.parseBinaryExpression)
 	p.registerInfix(tokens.LESS_THAN, p.parseBinaryExpression)
 	p.registerInfix(tokens.GREATER_THAN, p.parseBinaryExpression)
+	p.registerInfix(tokens.LESS_THAN_EQUAL, p.parseBinaryExpression)
+	p.registerInfix(tokens.GREATER_THAN_EQUAL, p.parseBinaryExpression)
 	p.registerInfix(tokens.PLUS, p.parseBinaryExpression)
 	p.registerInfix(tokens.MINUS, p.parseBinaryExpression)
 	p.registerInfix(tokens.STAR, p.parseBinaryExpression)
@@ -353,6 +357,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	expr := prefix()
 
 	for !p.isNextToken(tokens.SEMICOLON) && precedence < p.peekPrecedence() {
+
 		infix := p.infixParseFns[p.nextToken.Type]
 		if infix == nil {
 			return expr

@@ -95,9 +95,19 @@ func (l *Lexer) NextToken() tokens.Token {
 			tok = tokens.New(tokens.ASSIGN, string(l.currChar), l.currLine)
 		}
 	case '<':
-		tok = tokens.New(tokens.LESS_THAN, string(l.currChar), l.currLine)
+		if l.peekChar() == '=' {
+			tok = tokens.New(tokens.LESS_THAN_EQUAL, "<=", l.currLine)
+			l.readChar()
+		} else {
+			tok = tokens.New(tokens.LESS_THAN, string(l.currChar), l.currLine)
+		}
 	case '>':
-		tok = tokens.New(tokens.GREATER_THAN, string(l.currChar), l.currLine)
+		if l.peekChar() == '=' {
+			tok = tokens.New(tokens.GREATER_THAN_EQUAL, ">=", l.currLine)
+			l.readChar()
+		} else {
+			tok = tokens.New(tokens.GREATER_THAN, string(l.currChar), l.currLine)
+		}
 	case '!':
 		if l.peekChar() == '=' {
 			tok = tokens.New(tokens.NOT_EQUALS, "!=", l.currLine)

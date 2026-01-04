@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	mode := flag.String("mode", constants.REPL_MODE_PARSE, "mode to run the repl on")
+	mode := flag.String("mode", constants.REPL_MODE_EVAL, "mode to run the repl on")
 	flag.Parse()
 
 	if *mode != constants.REPL_MODE_LEX && *mode != constants.REPL_MODE_PARSE && *mode != constants.REPL_MODE_EVAL {
