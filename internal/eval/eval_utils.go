@@ -1,6 +1,10 @@
 package eval
 
-import "github.com/0xmukesh/coco/internal/object"
+import (
+	"fmt"
+
+	"github.com/0xmukesh/coco/internal/object"
+)
 
 var (
 	NULL = &object.Null{}
@@ -30,4 +34,18 @@ func isTruthy(value object.Object) bool {
 	}
 
 	return true
+}
+
+func newErrorObject(format string, a ...interface{}) *object.Error {
+	return &object.Error{
+		Message: fmt.Sprintf(format, a...),
+	}
+}
+
+func isError(obj object.Object) bool {
+	if obj != nil {
+		return obj.Type() == object.ERROR_OBJECT
+	}
+
+	return false
 }

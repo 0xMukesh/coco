@@ -5,10 +5,12 @@ import "fmt"
 type ObjectType string
 
 const (
-	OBJECT_INT   = "INTEGER"
-	OBJECT_FLOAT = "FLOAT"
-	OBJECT_BOOL  = "BOOLEAN"
-	OBJECT_NULL  = "NULL"
+	INT_OBJECT    = "INTEGER"
+	FLOAT_OBJECT  = "FLOAT"
+	BOOL_OBJECT   = "BOOLEAN"
+	NULL_OBJECT   = "NULL"
+	RETURN_OBJECT = "RETURN"
+	ERROR_OBJECT  = "ERROR"
 )
 
 type Object interface {
@@ -21,7 +23,7 @@ type Integer struct {
 }
 
 func (i *Integer) Type() string {
-	return OBJECT_INT
+	return INT_OBJECT
 }
 func (i *Integer) Inspect() string {
 	return fmt.Sprintf("%d", i.Value)
@@ -32,7 +34,7 @@ type Float struct {
 }
 
 func (f *Float) Type() string {
-	return OBJECT_FLOAT
+	return FLOAT_OBJECT
 }
 func (f *Float) Inspect() string {
 	return fmt.Sprintf("%f", f.Value)
@@ -43,7 +45,7 @@ type Boolean struct {
 }
 
 func (b *Boolean) Type() string {
-	return OBJECT_BOOL
+	return BOOL_OBJECT
 }
 func (b *Boolean) Inspect() string {
 	return fmt.Sprintf("%t", b.Value)
@@ -52,8 +54,30 @@ func (b *Boolean) Inspect() string {
 type Null struct{}
 
 func (n *Null) Type() string {
-	return OBJECT_NULL
+	return NULL_OBJECT
 }
 func (n *Null) Inspect() string {
 	return "null"
+}
+
+type Return struct {
+	Value Object
+}
+
+func (r *Return) Type() string {
+	return RETURN_OBJECT
+}
+func (r *Return) Inspect() string {
+	return r.Inspect()
+}
+
+type Error struct {
+	Message string
+}
+
+func (e *Error) Type() string {
+	return ERROR_OBJECT
+}
+func (e *Error) Inspect() string {
+	return "ERROR: " + e.Message
 }

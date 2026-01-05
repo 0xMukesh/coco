@@ -15,8 +15,8 @@ import (
 
 type Driver struct {
 	Source string
-	tokens []tokens.Token
-	ast    ast.Node
+	Tokens []tokens.Token
+	Ast    ast.Node
 }
 
 func NewDriver(source string) *Driver {
@@ -27,37 +27,37 @@ func NewDriver(source string) *Driver {
 
 func (d *Driver) Lex() ([]tokens.Token, error) {
 	l := lexer.New(d.Source)
-	d.tokens = []tokens.Token{}
+	d.Tokens = []tokens.Token{}
 
 	for tok := l.NextToken(); tok.Type != tokens.EOF; tok = l.NextToken() {
-		d.tokens = append(d.tokens, tok)
+		d.Tokens = append(d.Tokens, tok)
 	}
 
 	// FIXME: handle lexing errors over here
-	return d.tokens, nil
+	return d.Tokens, nil
 }
 
 func (d *Driver) Parse() (ast.Node, error) {
-	if d.tokens == nil {
+	if d.Tokens == nil {
 		return nil, errors.New("source not lexed: tokens are nil")
 	}
 
-	p := parser.New(d.tokens)
+	p := parser.New(d.Tokens)
 	program := p.ParseProgram()
 	if len(p.Errors()) != 0 {
 		return nil, fmt.Errorf("failed to parse program -  %s", strings.Join(p.Errors(), "\n"))
 	}
 
-	d.ast = program
+	d.Ast = program
 	return program, nil
 }
 
 func (d *Driver) Eval() (object.Object, error) {
-	if d.ast == nil {
+	if d.Ast == nil {
 		return nil, errors.New("ast not found")
 	}
 
-	res := eval.Eval(d.ast)
+	res := eval.Eval(d.Ast)
 	return res, nil
 }
 
