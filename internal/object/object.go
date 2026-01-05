@@ -1,16 +1,22 @@
 package object
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+
+	"github.com/0xmukesh/coco/internal/ast"
+)
 
 type ObjectType string
 
 const (
-	INT_OBJECT    = "INTEGER"
-	FLOAT_OBJECT  = "FLOAT"
-	BOOL_OBJECT   = "BOOLEAN"
-	NULL_OBJECT   = "NULL"
-	RETURN_OBJECT = "RETURN"
-	ERROR_OBJECT  = "ERROR"
+	INT_OBJECT      = "INTEGER"
+	FLOAT_OBJECT    = "FLOAT"
+	BOOL_OBJECT     = "BOOLEAN"
+	NULL_OBJECT     = "NULL"
+	RETURN_OBJECT   = "RETURN"
+	FUNCTION_OBJECT = "FUNCTION"
+	ERROR_OBJECT    = "ERROR"
 )
 
 type Object interface {
@@ -69,6 +75,34 @@ func (r *Return) Type() string {
 }
 func (r *Return) Inspect() string {
 	return r.Inspect()
+}
+
+type Function struct {
+	Parameters []*ast.Identifier
+	Body       *ast.BlockStatement
+	Env        *Environment
+}
+
+func (f *Function) Type() string {
+	return FUNCTION_OBJECT
+}
+func (f *Function) Inspect() string {
+	var out bytes.Buffer
+
+	out.WriteString("fn(")
+	for i, p := range f.Parameters {
+		out.WriteString(p.String())
+		out.WriteString(",")
+
+		if i < len(f.Parameters)-2 {
+			out.WriteString(" ")
+		}
+	}
+	out.WriteString(") ")
+
+	out.WriteString("{ " + f.Body.String() + " }")
+
+	return out.String()
 }
 
 type Error struct {

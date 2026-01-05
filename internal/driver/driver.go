@@ -57,7 +57,10 @@ func (d *Driver) Eval() (object.Object, error) {
 		return nil, errors.New("ast not found")
 	}
 
-	res := eval.Eval(d.Ast)
+	env := object.NewEnvironment()
+	evaler := eval.NewEvalutor()
+
+	res := evaler.Eval(d.Ast, env)
 	return res, nil
 }
 

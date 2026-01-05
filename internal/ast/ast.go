@@ -194,6 +194,24 @@ func (c *CallExpression) String() string {
 	return out.String()
 }
 
+type AssignmentExpression struct {
+	Token      tokens.Token // tokens.ASSIGN
+	Identifier Expression
+	Value      Expression
+}
+
+func (a *AssignmentExpression) expressionNode()      {}
+func (a *AssignmentExpression) TokenLiteral() string { return a.Token.Literal }
+func (a *AssignmentExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(a.Identifier.String())
+	out.WriteString(" = ")
+	out.WriteString(a.Value.String())
+
+	return out.String()
+}
+
 type LetStatement struct {
 	Token      tokens.Token // tokens.LET
 	Identifier *Identifier

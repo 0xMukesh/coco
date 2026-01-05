@@ -15,6 +15,7 @@ type (
 
 const (
 	LOWEST = iota
+	ASSIGN
 	EQUALS
 	LESS_GREATER
 	SUM
@@ -24,6 +25,7 @@ const (
 )
 
 var precedenceTable = map[tokens.TokenType]int{
+	tokens.ASSIGN:             ASSIGN,
 	tokens.EQUALS:             EQUALS,
 	tokens.NOT_EQUALS:         EQUALS,
 	tokens.LESS_THAN:          LESS_GREATER,
@@ -84,6 +86,7 @@ func New(tks []tokens.Token) *Parser {
 	p.registerInfix(tokens.STAR, p.parseBinaryExpression)
 	p.registerInfix(tokens.SLASH, p.parseBinaryExpression)
 	p.registerInfix(tokens.LPAREN, p.parseCallExpression)
+	p.registerInfix(tokens.ASSIGN, p.parseAssignmentExpression)
 
 	return p
 }
@@ -342,6 +345,22 @@ func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 	}
 	expr.Arguments = p.parseCallArguments()
 
+	if !p.expectPeek(tokens.RPAREN) {
+		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseAssignmentExpression(lhs ast.Expression) ast.Expression {
+	expr := &ast.AssignmentExpression{
+		Token:      p.currentToken,
+		Identifier: lhs,
+	}
+	p.readToken()
+
+	rhs := p.parseExpression(LOWEST)
+	expr.Value = rhs
 	return expr
 }
 
@@ -366,7 +385,6 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	expr := prefix()
 
 	for !p.isNextToken(tokens.SEMICOLON) && precedence < p.peekPrecedence() {
-
 		infix := p.infixParseFns[p.nextToken.Type]
 		if infix == nil {
 			return expr

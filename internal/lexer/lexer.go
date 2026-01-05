@@ -64,17 +64,17 @@ func (l *Lexer) readDigit() string {
 }
 
 func (l *Lexer) skipWhitespace() {
-	for utils.IsWhitespace(l.currChar) {
+	for l.currChar == ' ' || l.currChar == '\t' || l.currChar == '\n' || l.currChar == '\r' {
+		if l.currChar == '\n' {
+			l.currLine++
+		}
+
 		l.readChar()
 	}
 }
 
 func (l *Lexer) NextToken() tokens.Token {
 	var tok tokens.Token
-
-	if l.currChar == '\n' {
-		l.currLine++
-	}
 
 	l.skipWhitespace()
 
@@ -86,7 +86,15 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '*':
 		tok = tokens.New(tokens.STAR, string(l.currChar), l.currLine)
 	case '/':
-		tok = tokens.New(tokens.SLASH, string(l.currChar), l.currLine)
+		if l.peekChar() == '/' {
+			for l.currChar != '\n' && l.currChar != 0 {
+				l.readChar()
+			}
+
+			return l.NextToken()
+		} else {
+			tok = tokens.New(tokens.SLASH, string(l.currChar), l.currLine)
+		}
 	case '=':
 		if l.peekChar() == '=' {
 			tok = tokens.New(tokens.EQUALS, "==", l.currLine)

@@ -15,12 +15,10 @@ func Start() error {
 	flag.Parse()
 
 	if *filePath != "" {
-		executeFromFile(*filePath)
+		return executeFromFile(*filePath)
 	} else {
-		startRepl()
+		return startRepl()
 	}
-
-	return nil
 }
 
 func executeFromFile(filePath string) error {
