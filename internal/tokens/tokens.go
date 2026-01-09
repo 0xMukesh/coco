@@ -3,74 +3,43 @@ package tokens
 type TokenType string
 
 type Token struct {
-	Type    TokenType
 	Literal string
+	Type    TokenType
 	Line    int
+	Column  int
 }
 
 const (
-	ILLEGAL = "ILLEGAL"
-	EOF     = "EOF"
+	PLUS  = "+"
+	MINUS = "-"
+	STAR  = "*"
+	SLASH = "/"
 
-	IDENTIFIER = "IDENTIFIER"
-	INTEGER    = "INTEGER"
-	FLOAT      = "FLOAT"
-
-	PLUS               = "+"
-	MINUS              = "-"
-	STAR               = "*"
-	SLASH              = "/"
-	ASSIGN             = "="
-	LESS_THAN          = "<"
-	LESS_THAN_EQUAL    = "<="
-	GREATER_THAN       = ">"
-	GREATER_THAN_EQUAL = ">="
-	BANG               = "!"
-	EQUALS             = "=="
-	NOT_EQUALS         = "!="
-
-	COMMA     = ","
-	SEMICOLON = ";"
-	QUOTES    = "\""
+	ASSIGN              = "="
+	LESS_THAN           = "<"
+	GREATER_THAN        = ">"
+	EQUALS              = "=="
+	LESS_THAN_EQUALS    = "<="
+	GREATER_THAN_EQUALS = ">="
+	BANG                = "!"
+	NOT_EQUALS          = "!="
 
 	LPAREN = "("
 	RPAREN = ")"
 	LBRACE = "{"
 	RBRACE = "}"
 
-	FUNCTION = "FUNCTION"
-	LET      = "LET"
-	CONST    = "CONST"
-	IF       = "IF"
-	ELSE     = "ELSE"
-	TRUE     = "TRUE"
-	FALSE    = "FALSE"
-	RETURN   = "RETURN"
+	SEMICOLON = ";"
+
+	EOF     = "EOF"
+	ILLEGAL = "ILLEGAL"
 )
 
-var keywords = map[string]TokenType{
-	"fn":     FUNCTION,
-	"let":    LET,
-	"const":  CONST,
-	"if":     IF,
-	"else":   ELSE,
-	"true":   TRUE,
-	"false":  FALSE,
-	"return": RETURN,
-}
-
-func LookupIdent(ident string) TokenType {
-	if tt, ok := keywords[ident]; ok {
-		return tt
-	}
-
-	return IDENTIFIER
-}
-
-func New(tokenType TokenType, literal string, line int) Token {
+func New(tokenType TokenType, literal string, line, column int) Token {
 	return Token{
-		Type:    tokenType,
 		Literal: literal,
+		Type:    tokenType,
 		Line:    line,
+		Column:  column,
 	}
 }
