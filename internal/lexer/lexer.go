@@ -1,6 +1,8 @@
 package lexer
 
 import (
+	"strings"
+
 	"github.com/0xmukesh/coco/internal/tokens"
 	"github.com/0xmukesh/coco/internal/utils"
 )
@@ -76,8 +78,22 @@ func (l *Lexer) readIdentifier() string {
 	startPosition := l.currPosition
 	l.readChar()
 
+	// check if the next character is letter
+	// if yes, then consume it
 	for utils.IsLetter(l.peekChar()) {
-		// keep consuming characters, until lexer finds a "non-letter" character
+		l.readChar()
+	}
+
+	return l.input[startPosition : l.currPosition+1]
+}
+
+func (l *Lexer) readNumeric() string {
+	startPosition := l.currPosition
+	l.readChar()
+
+	// check if next character is numeric i.e. is a either a digit or "."
+	// if yes, then consume it
+	for utils.IsDigit(l.peekChar()) || l.peekChar() == '.' {
 		l.readChar()
 	}
 
@@ -185,6 +201,15 @@ func (l *Lexer) NextToken() tokens.Token {
 			identifier := l.readIdentifier()
 
 			tok = l.newTokenWithExplicitStartColumn(tokens.IdentTokenTypeLookup(identifier), startColumn, identifier)
+		} else if utils.IsDigit(l.currChar) {
+			startColumn := l.column
+			numeric := l.readNumeric()
+
+			if strings.Contains(numeric, ".") {
+				tok = l.newTokenWithExplicitStartColumn(tokens.FLOAT, startColumn, numeric)
+			} else {
+				tok = l.newTokenWithExplicitStartColumn(tokens.INTEGER, startColumn, numeric)
+			}
 		} else {
 			tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
 		}

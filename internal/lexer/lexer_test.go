@@ -35,7 +35,10 @@ test test
 
 abc
 let +=
-const xyz`
+const xyz
+
+2345 3.456
+3.`
 	tests := []struct {
 		wantTokenType   tokens.TokenType
 		wantLiteral     string
@@ -66,6 +69,9 @@ const xyz`
 		{tokens.ASSIGN, "=", 27, 5, 6},
 		{tokens.CONST, "const", 28, 0, 5},
 		{tokens.IDENTIFIER, "xyz", 28, 6, 9},
+		{tokens.INTEGER, "2345", 30, 0, 4},
+		{tokens.FLOAT, "3.456", 30, 5, 10},
+		{tokens.FLOAT, "3.", 31, 0, 2},
 	}
 	l := New(source)
 
