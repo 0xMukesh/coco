@@ -3,10 +3,11 @@ package tokens
 type TokenType string
 
 type Token struct {
-	Literal string
-	Type    TokenType
-	Line    int
-	Column  int
+	Literal     string
+	Type        TokenType
+	Line        int
+	StartColumn int
+	EndColumn   int
 }
 
 const (
@@ -35,11 +36,12 @@ const (
 	ILLEGAL = "ILLEGAL"
 )
 
-func New(tokenType TokenType, literal string, line, column int) Token {
+func New(tokenType TokenType, literal string, line, startColumn, endColumn int) Token {
 	return Token{
-		Literal: literal,
-		Type:    tokenType,
-		Line:    line,
-		Column:  column,
+		Literal:     literal,
+		Type:        tokenType,
+		Line:        line,
+		StartColumn: startColumn,
+		EndColumn:   endColumn,
 	}
 }

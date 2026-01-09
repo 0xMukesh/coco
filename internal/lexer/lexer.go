@@ -26,7 +26,11 @@ func New(input string) *Lexer {
 }
 
 func (l *Lexer) newToken(tt tokens.TokenType, literal string) tokens.Token {
-	return tokens.New(tt, literal, l.line, l.column)
+	return tokens.New(tt, literal, l.line, l.column, l.column+len(literal))
+}
+
+func (l *Lexer) newTokenWithExplicitStartColumn(tt tokens.TokenType, startColumn int, literal string) tokens.Token {
+	return tokens.New(tt, literal, l.line, startColumn, startColumn+len(literal))
 }
 
 func (l *Lexer) readChar() {
@@ -45,6 +49,14 @@ func (l *Lexer) readChar() {
 
 	l.currPosition = l.nextPosition
 	l.nextPosition++
+}
+
+func (l *Lexer) peekChar() byte {
+	if l.nextPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.nextPosition]
+	}
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -68,13 +80,37 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '/':
 		tok = l.newToken(tokens.SLASH, string(l.currChar))
 	case '=':
-		tok = l.newToken(tokens.ASSIGN, string(l.currChar))
+		if l.peekChar() == '=' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.EQUALS, startColumn, "==")
+		} else {
+			tok = l.newToken(tokens.ASSIGN, string(l.currChar))
+		}
 	case '<':
-		tok = l.newToken(tokens.LESS_THAN, string(l.currChar))
+		if l.peekChar() == '=' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.LESS_THAN_EQUALS, startColumn, "<=")
+		} else {
+			tok = l.newToken(tokens.LESS_THAN, string(l.currChar))
+		}
 	case '>':
-		tok = l.newToken(tokens.GREATER_THAN, string(l.currChar))
+		if l.peekChar() == '=' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.GREATER_THAN_EQUALS, startColumn, ">=")
+		} else {
+			tok = l.newToken(tokens.GREATER_THAN, string(l.currChar))
+		}
 	case '!':
-		tok = l.newToken(tokens.BANG, string(l.currChar))
+		if l.peekChar() == '=' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.NOT_EQUALS, startColumn, "!=")
+		} else {
+			tok = l.newToken(tokens.BANG, string(l.currChar))
+		}
 	case '(':
 		tok = l.newToken(tokens.LPAREN, string(l.currChar))
 	case ')':

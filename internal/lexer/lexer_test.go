@@ -11,26 +11,33 @@ func TestLexer(t *testing.T) {
 	source := `+-*/
 (){}
   !<>
-=`
+=
+== >= <=
+!=`
 	tests := []struct {
-		wantTokenType tokens.TokenType
-		wantLiteral   string
-		wantLine      int
-		wantColumn    int
+		wantTokenType   tokens.TokenType
+		wantLiteral     string
+		wantLine        int
+		wantStartColumn int
+		wantEndColumn   int
 	}{
-		{tokens.PLUS, "+", 1, 0},
-		{tokens.MINUS, "-", 1, 1},
-		{tokens.STAR, "*", 1, 2},
-		{tokens.SLASH, "/", 1, 3},
-		{tokens.LPAREN, "(", 2, 0},
-		{tokens.RPAREN, ")", 2, 1},
-		{tokens.LBRACE, "{", 2, 2},
-		{tokens.RBRACE, "}", 2, 3},
-		{tokens.BANG, "!", 3, 2},
-		{tokens.LESS_THAN, "<", 3, 3},
-		{tokens.GREATER_THAN, ">", 3, 4},
-		{tokens.ASSIGN, "=", 4, 0},
-		{tokens.EOF, "", 4, 0},
+		{tokens.PLUS, "+", 1, 0, 1},
+		{tokens.MINUS, "-", 1, 1, 2},
+		{tokens.STAR, "*", 1, 2, 3},
+		{tokens.SLASH, "/", 1, 3, 4},
+		{tokens.LPAREN, "(", 2, 0, 1},
+		{tokens.RPAREN, ")", 2, 1, 2},
+		{tokens.LBRACE, "{", 2, 2, 3},
+		{tokens.RBRACE, "}", 2, 3, 4},
+		{tokens.BANG, "!", 3, 2, 3},
+		{tokens.LESS_THAN, "<", 3, 3, 4},
+		{tokens.GREATER_THAN, ">", 3, 4, 5},
+		{tokens.ASSIGN, "=", 4, 0, 1},
+		{tokens.EQUALS, "==", 5, 0, 2},
+		{tokens.GREATER_THAN_EQUALS, ">=", 5, 3, 5},
+		{tokens.LESS_THAN_EQUALS, "<=", 5, 6, 8},
+		{tokens.NOT_EQUALS, "!=", 6, 0, 2},
+		{tokens.EOF, "", 6, 1, 1},
 	}
 	l := New(source)
 
@@ -49,8 +56,12 @@ func TestLexer(t *testing.T) {
 			t.Fatal(utils.TestMismatchErrorBuilder(i, "token line", tt.wantLine, tok.Line))
 		}
 
-		if tt.wantColumn != tok.Column {
-			t.Fatal(utils.TestMismatchErrorBuilder(i, "token column", tt.wantColumn, tok.Column))
+		if tt.wantStartColumn != tok.StartColumn {
+			t.Fatal(utils.TestMismatchErrorBuilder(i, "token start column", tt.wantStartColumn, tok.StartColumn))
+		}
+
+		if tt.wantEndColumn != tok.EndColumn {
+			t.Fatal(utils.TestMismatchErrorBuilder(i, "token end column", tt.wantEndColumn, tok.EndColumn))
 		}
 	}
 }
