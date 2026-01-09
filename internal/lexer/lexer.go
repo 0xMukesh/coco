@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"github.com/0xmukesh/coco/internal/tokens"
+	"github.com/0xmukesh/coco/internal/utils"
 )
 
 type Lexer struct {
@@ -39,6 +40,12 @@ func (l *Lexer) newTokenWithExplicitStartColumn(tt tokens.TokenType, startColumn
 	return tokens.New(tt, literal, l.line, startColumn, startColumn+len(literal))
 }
 
+func (l *Lexer) skipWhitespace() {
+	for l.currChar == ' ' || l.currChar == '\n' || l.currChar == '\t' || l.currChar == '\r' {
+		l.readChar()
+	}
+}
+
 func (l *Lexer) readChar() {
 	if l.nextPosition >= len(l.input) {
 		l.currChar = 0
@@ -65,10 +72,16 @@ func (l *Lexer) peekChar() byte {
 	}
 }
 
-func (l *Lexer) skipWhitespace() {
-	for l.currChar == ' ' || l.currChar == '\n' || l.currChar == '\t' || l.currChar == '\r' {
+func (l *Lexer) readIdentifier() string {
+	startPosition := l.currPosition
+	l.readChar()
+
+	for utils.IsLetter(l.peekChar()) {
+		// keep consuming characters, until lexer finds a "non-letter" character
 		l.readChar()
 	}
+
+	return l.input[startPosition : l.currPosition+1]
 }
 
 func (l *Lexer) NextToken() tokens.Token {
@@ -160,10 +173,21 @@ func (l *Lexer) NextToken() tokens.Token {
 		tok = l.newToken(tokens.LBRACE, string(l.currChar))
 	case '}':
 		tok = l.newToken(tokens.RBRACE, string(l.currChar))
+	case ';':
+		tok = l.newToken(tokens.SEMICOLON, string(l.currChar))
+	case ',':
+		tok = l.newToken(tokens.COMMA, string(l.currChar))
 	case 0:
 		tok = l.newToken(tokens.EOF, "")
 	default:
-		tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+		if utils.IsLetter(l.currChar) {
+			startColumn := l.column
+			identifier := l.readIdentifier()
+
+			tok = l.newTokenWithExplicitStartColumn(tokens.IdentTokenTypeLookup(identifier), startColumn, identifier)
+		} else {
+			tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+		}
 	}
 
 	l.readChar()

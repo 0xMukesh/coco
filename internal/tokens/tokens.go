@@ -31,10 +31,35 @@ const (
 	RBRACE = "}"
 
 	SEMICOLON = ";"
+	COMMA     = ","
+
+	IDENTIFIER = "IDENTIFIER"
+	INTEGER    = "INTEGER"
+	FLOAT      = "FLOAT"
+
+	LET      = "LET"
+	CONST    = "CONST"
+	FUNCTION = "FUNCTION"
+	IF       = "IF"
+	ELSE     = "ELSE"
+	TRUE     = "TRUE"
+	FALSE    = "FALSE"
+	RETURN   = "RETURN"
 
 	EOF     = "EOF"
 	ILLEGAL = "ILLEGAL"
 )
+
+var keywords = map[string]TokenType{
+	"let":    LET,
+	"const":  CONST,
+	"fn":     FUNCTION,
+	"if":     IF,
+	"else":   ELSE,
+	"true":   TRUE,
+	"false":  FALSE,
+	"return": RETURN,
+}
 
 func New(tokenType TokenType, literal string, line, startColumn, endColumn int) Token {
 	return Token{
@@ -44,4 +69,12 @@ func New(tokenType TokenType, literal string, line, startColumn, endColumn int) 
 		StartColumn: startColumn,
 		EndColumn:   endColumn,
 	}
+}
+
+func IdentTokenTypeLookup(ident string) TokenType {
+	if tt, ok := keywords[ident]; ok {
+		return tt
+	}
+
+	return IDENTIFIER
 }

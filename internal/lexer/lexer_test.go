@@ -33,7 +33,9 @@ comment
 test test
 */
 
-/**`
+abc
+let +=
+const xyz`
 	tests := []struct {
 		wantTokenType   tokens.TokenType
 		wantLiteral     string
@@ -58,7 +60,12 @@ test test
 		{tokens.LESS_THAN_EQUALS, "<=", 5, 6, 8},
 		{tokens.NOT_EQUALS, "!=", 6, 0, 2},
 		{tokens.EQUALS, "==", 18, 0, 2},
-		{tokens.ILLEGAL, "unterminated comment", 26, 2, 3},
+		{tokens.IDENTIFIER, "abc", 26, 0, 3},
+		{tokens.LET, "let", 27, 0, 3},
+		{tokens.PLUS, "+", 27, 4, 5},
+		{tokens.ASSIGN, "=", 27, 5, 6},
+		{tokens.CONST, "const", 28, 0, 5},
+		{tokens.IDENTIFIER, "xyz", 28, 6, 9},
 	}
 	l := New(source)
 
