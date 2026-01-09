@@ -97,7 +97,8 @@ func (l *Lexer) readNumeric() string {
 		l.readChar()
 	}
 
-	return l.input[startPosition : l.currPosition+1]
+	// FIXME: check why semicolon gets included over here and not in readIdentifier
+	return l.input[startPosition:l.currPosition]
 }
 
 func (l *Lexer) NextToken() tokens.Token {
@@ -122,7 +123,7 @@ func (l *Lexer) NextToken() tokens.Token {
 				l.readChar()
 			}
 
-			// once new line is found `NextToken` is executed again, which runs `skipWhitespace`, which under the hood gets the next character
+			// once new line is found `NextToken` is executed recursively, which runs `skipWhitespace`, which under the hood gets the next character
 			return l.NextToken()
 		} else if l.peekChar() == '*' {
 			// current character is *
@@ -152,6 +153,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '=':
 		if l.peekChar() == '=' {
 			startColumn := l.column
+			// consume =
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.EQUALS, startColumn, "==")
 		} else {
@@ -160,6 +162,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '<':
 		if l.peekChar() == '=' {
 			startColumn := l.column
+			// consume <
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.LESS_THAN_EQUALS, startColumn, "<=")
 		} else {
@@ -168,6 +171,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '>':
 		if l.peekChar() == '=' {
 			startColumn := l.column
+			// consume >
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.GREATER_THAN_EQUALS, startColumn, ">=")
 		} else {
@@ -176,6 +180,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '!':
 		if l.peekChar() == '=' {
 			startColumn := l.column
+			// consume !
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.NOT_EQUALS, startColumn, "!=")
 		} else {
@@ -217,4 +222,14 @@ func (l *Lexer) NextToken() tokens.Token {
 
 	l.readChar()
 	return tok
+}
+
+func (l *Lexer) Lex() []tokens.Token {
+	var tks []tokens.Token
+
+	for tok := l.NextToken(); tok.Type != tokens.EOF; tok = l.NextToken() {
+		tks = append(tks, tok)
+	}
+
+	return tks
 }
