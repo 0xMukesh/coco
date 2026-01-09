@@ -13,7 +13,27 @@ func TestLexer(t *testing.T) {
   !<>
 =
 == >= <=
-!=`
+!=
+
+// this is a single line comment
+
+/*
+this
+is
+a
+multi line
+comment
+*/
+
+==
+
+// test test
+
+/*
+test test
+*/
+
+/**`
 	tests := []struct {
 		wantTokenType   tokens.TokenType
 		wantLiteral     string
@@ -37,7 +57,8 @@ func TestLexer(t *testing.T) {
 		{tokens.GREATER_THAN_EQUALS, ">=", 5, 3, 5},
 		{tokens.LESS_THAN_EQUALS, "<=", 5, 6, 8},
 		{tokens.NOT_EQUALS, "!=", 6, 0, 2},
-		{tokens.EOF, "", 6, 1, 1},
+		{tokens.EQUALS, "==", 18, 0, 2},
+		{tokens.ILLEGAL, "unterminated comment", 26, 2, 3},
 	}
 	l := New(source)
 

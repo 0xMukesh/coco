@@ -21,12 +21,18 @@ func New(input string) *Lexer {
 		column:       -1,
 	}
 
-	l.readChar() // initialize with currChar
+	l.readChar()
 	return l
 }
 
 func (l *Lexer) newToken(tt tokens.TokenType, literal string) tokens.Token {
-	return tokens.New(tt, literal, l.line, l.column, l.column+len(literal))
+	endColumn := l.column + len(literal)
+
+	if tt == tokens.ILLEGAL {
+		endColumn = l.column + 1
+	}
+
+	return tokens.New(tt, literal, l.line, l.column, endColumn)
 }
 
 func (l *Lexer) newTokenWithExplicitStartColumn(tt tokens.TokenType, startColumn int, literal string) tokens.Token {
@@ -78,7 +84,42 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '*':
 		tok = l.newToken(tokens.STAR, string(l.currChar))
 	case '/':
-		tok = l.newToken(tokens.SLASH, string(l.currChar))
+		if l.peekChar() == '/' {
+			// current character is /
+			l.readChar()
+
+			for l.currChar != '\n' && l.currChar != 0 {
+				// skips all the characters until new line
+				l.readChar()
+			}
+
+			// once new line is found `NextToken` is executed again, which runs `skipWhitespace`, which under the hood gets the next character
+			return l.NextToken()
+		} else if l.peekChar() == '*' {
+			// current character is *
+			l.readChar()
+			// consume *, current character is first character of comment
+			l.readChar()
+
+			for {
+				if l.currChar == 0 {
+					return l.newToken(tokens.ILLEGAL, "unterminated comment")
+				}
+
+				if l.currChar == '*' && l.peekChar() == '/' {
+					// consume closing *, current character is /
+					l.readChar()
+					// consume closing /, current character is next character
+					l.readChar()
+
+					return l.NextToken()
+				}
+
+				l.readChar()
+			}
+		} else {
+			tok = l.newToken(tokens.SLASH, string(l.currChar))
+		}
 	case '=':
 		if l.peekChar() == '=' {
 			startColumn := l.column
