@@ -11,13 +11,11 @@ type Token struct {
 }
 
 const (
-	ASSIGN = "="
-	BANG   = "!"
-
-	PLUS  = "+"
-	MINUS = "-"
-	STAR  = "*"
-	SLASH = "/"
+	PLUS   = "+"
+	MINUS  = "-"
+	STAR   = "*"
+	SLASH  = "/"
+	MODULO = "%"
 
 	LESS_THAN           = "<"
 	GREATER_THAN        = ">"
@@ -25,18 +23,34 @@ const (
 	LESS_THAN_EQUALS    = "<="
 	GREATER_THAN_EQUALS = ">="
 	NOT_EQUALS          = "!="
+	AND                 = "&&"
+	OR                  = "||"
 
-	LPAREN = "("
-	RPAREN = ")"
-	LBRACE = "{"
-	RBRACE = "}"
+	ASSIGN = "="
+	BANG   = "!"
 
-	SEMICOLON = ";"
+	INCREMENT   = "++"
+	DECREMENT   = "--"
+	PLUS_EQUAL  = "+="
+	MINUS_EQUAL = "-="
+	STAR_EQUAL  = "*="
+	SLASH_EQUAL = "/="
+
+	LPAREN  = "("
+	RPAREN  = ")"
+	LBRACE  = "{"
+	RBRACE  = "}"
+	LSQUARE = "["
+	RSQUARE = "]"
+
 	COMMA     = ","
+	SEMICOLON = ";"
+	COLON     = ":"
 
 	IDENTIFIER = "IDENTIFIER"
 	INTEGER    = "INTEGER"
 	FLOAT      = "FLOAT"
+	STRING     = "STRING"
 
 	LET      = "LET"
 	CONST    = "CONST"

@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"bytes"
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
@@ -98,6 +99,25 @@ func (l *Lexer) readNumeric() string {
 	return l.input[startPosition : l.currPosition+1]
 }
 
+func (l *Lexer) readString(delim byte) string {
+	var out bytes.Buffer
+
+	for {
+		l.readChar()
+		if l.currChar == delim || l.currChar == 0 {
+			break
+		}
+
+		if l.currChar == '\\' {
+			l.readChar()
+		}
+
+		out.WriteByte(l.currChar)
+	}
+
+	return out.String()
+}
+
 func (l *Lexer) NextToken() tokens.Token {
 	var tok tokens.Token
 
@@ -105,11 +125,38 @@ func (l *Lexer) NextToken() tokens.Token {
 
 	switch l.currChar {
 	case '+':
-		tok = l.newToken(tokens.PLUS, string(l.currChar))
+		startColumn := l.column
+
+		if l.peekChar() == '+' {
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.INCREMENT, startColumn, "++")
+		} else if l.peekChar() == '=' {
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.PLUS_EQUAL, startColumn, "+=")
+		} else {
+			tok = l.newToken(tokens.PLUS, string(l.currChar))
+		}
 	case '-':
-		tok = l.newToken(tokens.MINUS, string(l.currChar))
+		startColumn := l.column
+
+		if l.peekChar() == '-' {
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.DECREMENT, startColumn, "--")
+		} else if l.peekChar() == '=' {
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.MINUS_EQUAL, startColumn, "-=")
+		} else {
+			tok = l.newToken(tokens.MINUS, string(l.currChar))
+		}
 	case '*':
-		tok = l.newToken(tokens.STAR, string(l.currChar))
+		startColumn := l.column
+
+		if l.peekChar() == '=' {
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.STAR_EQUAL, startColumn, "*=")
+		} else {
+			tok = l.newToken(tokens.STAR, string(l.currChar))
+		}
 	case '/':
 		if l.peekChar() == '/' {
 			// current character is slash
@@ -144,9 +191,15 @@ func (l *Lexer) NextToken() tokens.Token {
 
 				l.readChar()
 			}
+		} else if l.peekChar() == '=' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.SLASH_EQUAL, startColumn, string(l.currChar))
 		} else {
 			tok = l.newToken(tokens.SLASH, string(l.currChar))
 		}
+	case '%':
+		tok = l.newToken(tokens.MODULO, "%")
 	case '=':
 		if l.peekChar() == '=' {
 			startColumn := l.column
@@ -183,6 +236,18 @@ func (l *Lexer) NextToken() tokens.Token {
 		} else {
 			tok = l.newToken(tokens.BANG, string(l.currChar))
 		}
+	case '&':
+		if l.peekChar() == '&' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.AND, startColumn, "&&")
+		}
+	case '|':
+		if l.peekChar() == '|' {
+			startColumn := l.column
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.OR, startColumn, "||")
+		}
 	case '(':
 		tok = l.newToken(tokens.LPAREN, string(l.currChar))
 	case ')':
@@ -191,10 +256,20 @@ func (l *Lexer) NextToken() tokens.Token {
 		tok = l.newToken(tokens.LBRACE, string(l.currChar))
 	case '}':
 		tok = l.newToken(tokens.RBRACE, string(l.currChar))
+	case '[':
+		tok = l.newToken(tokens.LSQUARE, string(l.currChar))
+	case ']':
+		tok = l.newToken(tokens.RSQUARE, string(l.currChar))
 	case ';':
 		tok = l.newToken(tokens.SEMICOLON, string(l.currChar))
 	case ',':
 		tok = l.newToken(tokens.COMMA, string(l.currChar))
+	case ':':
+		tok = l.newToken(tokens.COLON, string(l.currChar))
+	case '"', '\'':
+		startColumn := l.column + 1
+		str := l.readString(l.currChar)
+		tok = l.newTokenWithExplicitStartColumn(tokens.STRING, startColumn, str)
 	case 0:
 		tok = l.newToken(tokens.EOF, "")
 	default:

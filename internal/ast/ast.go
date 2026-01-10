@@ -46,8 +46,8 @@ func (p *Program) String() string {
 }
 
 type IdentifierExpression struct {
-	Token tokens.Token
-	Value string
+	Token   tokens.Token
+	Literal string
 }
 
 func (ie *IdentifierExpression) expressionNode() {}
@@ -55,7 +55,20 @@ func (ie *IdentifierExpression) TokenLiteral() string {
 	return ie.Token.Literal
 }
 func (ie *IdentifierExpression) String() string {
-	return ie.Value
+	return ie.Literal
+}
+
+type StringExpression struct {
+	Token tokens.Token
+	Value string
+}
+
+func (se *StringExpression) expressionNode() {}
+func (se *StringExpression) TokenLiteral() string {
+	return se.Token.Literal
+}
+func (se *StringExpression) String() string {
+	return se.Value
 }
 
 type BooleanExpression struct {
@@ -130,9 +143,11 @@ func (be *BinaryExpression) TokenLiteral() string {
 func (be *BinaryExpression) String() string {
 	var out bytes.Buffer
 
+	out.WriteString("(")
 	out.WriteString(be.Left.String())
 	out.WriteString(" " + be.TokenLiteral() + " ")
 	out.WriteString(be.Right.String())
+	out.WriteString(")")
 
 	return out.String()
 }

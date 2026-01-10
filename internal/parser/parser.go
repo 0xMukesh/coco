@@ -60,6 +60,7 @@ func New(tks []tokens.Token) *Parser {
 	p.infixParseFns = make(map[tokens.TokenType]infixParseFn)
 
 	p.registerPrefixFn(tokens.IDENTIFIER, p.parseIdentifierExpression)
+	p.registerPrefixFn(tokens.STRING, p.parseStringExpression)
 	p.registerPrefixFn(tokens.INTEGER, p.parseIntegerExpression)
 	p.registerPrefixFn(tokens.TRUE, p.parseBooleanExpression)
 	p.registerPrefixFn(tokens.FALSE, p.parseBooleanExpression)
@@ -158,6 +159,13 @@ func (p *Parser) checkAndReadToken(tt tokens.TokenType) bool {
 
 func (p *Parser) parseIdentifierExpression() ast.Expression {
 	return &ast.IdentifierExpression{
+		Token:   p.currToken,
+		Literal: p.currToken.Literal,
+	}
+}
+
+func (p *Parser) parseStringExpression() ast.Expression {
+	return &ast.StringExpression{
 		Token: p.currToken,
 		Value: p.currToken.Literal,
 	}
@@ -294,8 +302,8 @@ func (p *Parser) parseFunctionParameters() []*ast.IdentifierExpression {
 	p.readToken()
 
 	parameters = append(parameters, &ast.IdentifierExpression{
-		Token: p.currToken,
-		Value: p.currToken.Literal,
+		Token:   p.currToken,
+		Literal: p.currToken.Literal,
 	})
 
 	for p.isNextToken(tokens.COMMA) {
@@ -303,8 +311,8 @@ func (p *Parser) parseFunctionParameters() []*ast.IdentifierExpression {
 		p.readToken() // consume comma
 
 		parameters = append(parameters, &ast.IdentifierExpression{
-			Token: p.currToken,
-			Value: p.currToken.Literal,
+			Token:   p.currToken,
+			Literal: p.currToken.Literal,
 		})
 	}
 
@@ -427,8 +435,8 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	}
 
 	stmt.Identifier = &ast.IdentifierExpression{
-		Token: p.currToken,
-		Value: p.currToken.Literal,
+		Token:   p.currToken,
+		Literal: p.currToken.Literal,
 	}
 
 	if p.isNextToken(tokens.ASSIGN) {
