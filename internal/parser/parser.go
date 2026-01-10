@@ -9,8 +9,34 @@ import (
 	"github.com/0xmukesh/coco/internal/utils"
 )
 
+const (
+	LOWEST = iota
+	ASSIGN
+	EQUALS
+	LESS_GREATER
+	SUM
+	PRODUCT
+	UNARY
+	FUNCTION_CALL
+)
+
+var precedenceTable = map[tokens.TokenType]int{
+	tokens.ASSIGN:              ASSIGN,
+	tokens.EQUALS:              EQUALS,
+	tokens.NOT_EQUALS:          EQUALS,
+	tokens.LESS_THAN:           LESS_GREATER,
+	tokens.GREATER_THAN:        LESS_GREATER,
+	tokens.LESS_THAN_EQUALS:    LESS_GREATER,
+	tokens.GREATER_THAN_EQUALS: LESS_GREATER,
+	tokens.PLUS:                SUM,
+	tokens.MINUS:               SUM,
+	tokens.STAR:                PRODUCT,
+	tokens.SLASH:               PRODUCT,
+}
+
 type (
 	prefixParseFn func() ast.Expression
+	infixParseFn  func(ast.Expression) ast.Expression
 )
 
 type Parser struct {
@@ -21,6 +47,7 @@ type Parser struct {
 	errors    []string
 
 	prefixParseFns map[tokens.TokenType]prefixParseFn
+	infixParseFns  map[tokens.TokenType]infixParseFn
 }
 
 func New(tks []tokens.Token) *Parser {
@@ -29,12 +56,24 @@ func New(tks []tokens.Token) *Parser {
 		nextIdx: -1,
 	}
 	p.prefixParseFns = make(map[tokens.TokenType]prefixParseFn)
+	p.infixParseFns = make(map[tokens.TokenType]infixParseFn)
 
 	p.registerPrefixFn(tokens.IDENTIFIER, p.parseIdentifierExpression)
 	p.registerPrefixFn(tokens.INTEGER, p.parseIntegerExpression)
 	p.registerPrefixFn(tokens.FLOAT, p.parseFloatExpression)
 	p.registerPrefixFn(tokens.MINUS, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.BANG, p.parseUnaryExpression)
+
+	p.registerInfixFn(tokens.PLUS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.MINUS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.STAR, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.SLASH, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.LESS_THAN, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.GREATER_THAN, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.LESS_THAN_EQUALS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.GREATER_THAN_EQUALS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.EQUALS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.NOT_EQUALS, p.parseBinaryExpression)
 
 	p.readToken()
 	p.readToken()
@@ -44,6 +83,10 @@ func New(tks []tokens.Token) *Parser {
 
 func (p *Parser) registerPrefixFn(tt tokens.TokenType, prefixFn prefixParseFn) {
 	p.prefixParseFns[tt] = prefixFn
+}
+
+func (p *Parser) registerInfixFn(tt tokens.TokenType, infixFn infixParseFn) {
+	p.infixParseFns[tt] = infixFn
 }
 
 func (p *Parser) addError(err string) {
@@ -67,6 +110,22 @@ func (p *Parser) peekToken() tokens.Token {
 	} else {
 		return p.tokens[p.nextIdx]
 	}
+}
+
+func (p *Parser) currentPrecedence() int {
+	if p, ok := precedenceTable[p.currToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
+}
+
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedenceTable[p.peekToken().Type]; ok {
+		return p
+	}
+
+	return LOWEST
 }
 
 func (p *Parser) isNextToken(tt tokens.TokenType) bool {
@@ -126,7 +185,7 @@ func (p *Parser) parseUnaryExpression() ast.Expression {
 	}
 	p.readToken()
 
-	expr.Expr = p.parseExpression()
+	expr.Expr = p.parseExpression(LOWEST)
 	if expr.Expr == nil {
 		p.addError(utils.ParserExpressionExpectedErrorBuilder(unaryOperator))
 		return nil
@@ -135,7 +194,26 @@ func (p *Parser) parseUnaryExpression() ast.Expression {
 	return expr
 }
 
-func (p *Parser) parseExpression() ast.Expression {
+func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
+	expr := &ast.BinaryExpression{
+		Left:     left,
+		Operator: p.currToken,
+	}
+
+	precedence := p.currentPrecedence()
+	binaryOperator := p.currToken
+	p.readToken()
+
+	expr.Right = p.parseExpression(precedence)
+	if expr.Right == nil {
+		p.addError(utils.ParserExpressionExpectedErrorBuilder(binaryOperator))
+		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
 	prefix := p.prefixParseFns[p.currToken.Type]
 	if prefix == nil {
 		p.addError(utils.ParserNoPrefixFnErrorBuilder(p.currToken))
@@ -143,6 +221,16 @@ func (p *Parser) parseExpression() ast.Expression {
 	}
 
 	expr := prefix()
+
+	for precedence < p.peekPrecedence() {
+		infix := p.infixParseFns[p.peekToken().Type]
+		if infix == nil {
+			return expr
+		}
+
+		p.readToken()
+		expr = infix(expr)
+	}
 
 	return expr
 }
@@ -166,7 +254,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		assignToken := p.currToken
 		p.readToken()
 
-		stmt.Value = p.parseExpression()
+		stmt.Value = p.parseExpression(LOWEST)
 		if stmt.Value == nil {
 			p.addError(utils.ParserExpressionExpectedErrorBuilder(assignToken))
 			return nil
@@ -187,7 +275,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	returnToken := p.currToken
 	p.readToken()
 
-	stmt.Expr = p.parseExpression()
+	stmt.Expr = p.parseExpression(LOWEST)
 	if stmt.Expr == nil {
 		p.addError(utils.ParserExpressionExpectedErrorBuilder(returnToken))
 		return nil
@@ -204,7 +292,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt := &ast.ExpressionStatement{
 		Token: p.currToken,
 	}
-	stmt.Expr = p.parseExpression()
+	stmt.Expr = p.parseExpression(LOWEST)
 
 	if p.isNextToken(tokens.SEMICOLON) {
 		p.readToken()

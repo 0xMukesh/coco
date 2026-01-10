@@ -11,18 +11,19 @@ type Token struct {
 }
 
 const (
+	ASSIGN = "="
+	BANG   = "!"
+
 	PLUS  = "+"
 	MINUS = "-"
 	STAR  = "*"
 	SLASH = "/"
 
-	ASSIGN              = "="
 	LESS_THAN           = "<"
 	GREATER_THAN        = ">"
 	EQUALS              = "=="
 	LESS_THAN_EQUALS    = "<="
 	GREATER_THAN_EQUALS = ">="
-	BANG                = "!"
 	NOT_EQUALS          = "!="
 
 	LPAREN = "("

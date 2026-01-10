@@ -76,7 +76,6 @@ func (l *Lexer) peekChar() byte {
 
 func (l *Lexer) readIdentifier() string {
 	startPosition := l.currPosition
-	l.readChar()
 
 	// check if the next character is letter
 	// if yes, then consume it
@@ -89,7 +88,6 @@ func (l *Lexer) readIdentifier() string {
 
 func (l *Lexer) readNumeric() string {
 	startPosition := l.currPosition
-	l.readChar()
 
 	// check if next character is numeric i.e. is a either a digit or "."
 	// if yes, then consume it
@@ -98,7 +96,7 @@ func (l *Lexer) readNumeric() string {
 	}
 
 	// FIXME: check why semicolon gets included over here and not in readIdentifier
-	return l.input[startPosition:l.currPosition]
+	return l.input[startPosition : l.currPosition+1]
 }
 
 func (l *Lexer) NextToken() tokens.Token {

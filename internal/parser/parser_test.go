@@ -13,7 +13,8 @@ let one_point_two = 1.2;
 let two_point = 2.;
 let name = something;
 let not_name = !name;
-return -two_point;`
+return -two_point;
+let one_plus_two = 1 + 2;`
 	l := lexer.New(source)
 	tks := l.Lex()
 

@@ -102,6 +102,29 @@ func (ue *UnaryExpression) String() string {
 	return out.String()
 }
 
+// <left><operator><right>
+type BinaryExpression struct {
+	Left     Expression
+	Operator tokens.Token
+	Right    Expression
+}
+
+func (be *BinaryExpression) expressionNode() {}
+func (be *BinaryExpression) TokenLiteral() string {
+	return be.Operator.Literal
+}
+func (be *BinaryExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(be.Left.String())
+	out.WriteString(" " + be.Operator.Literal + " ")
+	out.WriteString(be.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}
+
 // let <identifier> = <value>
 // let <identifier>
 type LetStatement struct {
