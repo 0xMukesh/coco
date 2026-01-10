@@ -60,9 +60,12 @@ func New(tks []tokens.Token) *Parser {
 
 	p.registerPrefixFn(tokens.IDENTIFIER, p.parseIdentifierExpression)
 	p.registerPrefixFn(tokens.INTEGER, p.parseIntegerExpression)
+	p.registerPrefixFn(tokens.TRUE, p.parseBooleanExpression)
+	p.registerPrefixFn(tokens.FALSE, p.parseBooleanExpression)
 	p.registerPrefixFn(tokens.FLOAT, p.parseFloatExpression)
 	p.registerPrefixFn(tokens.MINUS, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.BANG, p.parseUnaryExpression)
+	p.registerPrefixFn(tokens.LPAREN, p.parseGroupedExpression)
 
 	p.registerInfixFn(tokens.PLUS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.MINUS, p.parseBinaryExpression)
@@ -178,6 +181,15 @@ func (p *Parser) parseFloatExpression() ast.Expression {
 	}
 }
 
+func (p *Parser) parseBooleanExpression() ast.Expression {
+	isTrue := p.currToken.Type == tokens.TRUE
+
+	return &ast.BooleanExpression{
+		Token: p.currToken,
+		Value: isTrue,
+	}
+}
+
 func (p *Parser) parseUnaryExpression() ast.Expression {
 	unaryOperator := p.currToken
 	expr := &ast.UnaryExpression{
@@ -188,6 +200,25 @@ func (p *Parser) parseUnaryExpression() ast.Expression {
 	expr.Expr = p.parseExpression(LOWEST)
 	if expr.Expr == nil {
 		p.addError(utils.ParserExpressionExpectedErrorBuilder(unaryOperator))
+		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	expr := &ast.GroupedExpression{}
+
+	lParenToken := p.currToken
+	p.readToken() // consume LPAREN
+	expr.Expr = p.parseExpression(LOWEST)
+
+	if expr.Expr == nil {
+		p.addError(utils.ParserExpressionExpectedErrorBuilder(lParenToken))
+		return nil
+	}
+
+	if !p.checkAndReadToken(tokens.RPAREN) {
 		return nil
 	}
 

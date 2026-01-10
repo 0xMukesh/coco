@@ -57,6 +57,19 @@ func (ie *IdentifierExpression) String() string {
 	return ie.Value
 }
 
+type BooleanExpression struct {
+	Token tokens.Token
+	Value bool
+}
+
+func (be *BooleanExpression) expressionNode() {}
+func (be *BooleanExpression) TokenLiteral() string {
+	return be.Token.Literal
+}
+func (be *BooleanExpression) String() string {
+	return fmt.Sprint(be.Value)
+}
+
 type IntegerExpression struct {
 	Token tokens.Token
 	Value int64
@@ -116,10 +129,27 @@ func (be *BinaryExpression) TokenLiteral() string {
 func (be *BinaryExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString("(")
 	out.WriteString(be.Left.String())
 	out.WriteString(" " + be.Operator.Literal + " ")
 	out.WriteString(be.Right.String())
+
+	return out.String()
+}
+
+type GroupedExpression struct {
+	Token tokens.Token
+	Expr  Expression
+}
+
+func (ge *GroupedExpression) expressionNode() {}
+func (ge *GroupedExpression) TokenLiteral() string {
+	return ge.Token.Literal
+}
+func (ge *GroupedExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(ge.Expr.String())
 	out.WriteString(")")
 
 	return out.String()
