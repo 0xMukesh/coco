@@ -38,13 +38,17 @@ let if_true = if (is_true) {
 while (is_true) {
 	1 + 1;
 }
-	
+
 for (let a = 1; a >= 4; a) {}
 for (let a = 1; ;a) {}
 for (let a = 1;;) {}
 for (; a >= 4; a) {}
 for (; a >= 4;) {}
-for (; ; a) {}`
+for (; ; a) {}
+
+let two = fn(a, b, c, d) { return 1 + 1;}
+
+two(1, 2, 3, 4)`
 
 	l := lexer.New(source)
 	tks := l.Lex()

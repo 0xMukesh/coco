@@ -32,6 +32,7 @@ var precedenceTable = map[tokens.TokenType]int{
 	tokens.MINUS:               SUM,
 	tokens.STAR:                PRODUCT,
 	tokens.SLASH:               PRODUCT,
+	tokens.LPAREN:              FUNCTION_CALL,
 }
 
 type (
@@ -67,6 +68,7 @@ func New(tks []tokens.Token) *Parser {
 	p.registerPrefixFn(tokens.BANG, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.LPAREN, p.parseGroupedExpression)
 	p.registerPrefixFn(tokens.IF, p.parseIfExpression)
+	p.registerPrefixFn(tokens.FUNCTION, p.parseFunctionExpression)
 
 	p.registerInfixFn(tokens.PLUS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.MINUS, p.parseBinaryExpression)
@@ -78,6 +80,7 @@ func New(tks []tokens.Token) *Parser {
 	p.registerInfixFn(tokens.GREATER_THAN_EQUALS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.EQUALS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.NOT_EQUALS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.LPAREN, p.parseCallExpression)
 
 	p.readToken()
 	p.readToken()
@@ -280,6 +283,99 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	return expr
 }
 
+func (p *Parser) parseFunctionParameters() []*ast.IdentifierExpression {
+	parameters := []*ast.IdentifierExpression{}
+
+	if p.isNextToken(tokens.RPAREN) {
+		p.readToken() // consume left paren
+		return parameters
+	}
+
+	p.readToken()
+
+	parameters = append(parameters, &ast.IdentifierExpression{
+		Token: p.currToken,
+		Value: p.currToken.Literal,
+	})
+
+	for p.isNextToken(tokens.COMMA) {
+		p.readToken() // consume previous parameter
+		p.readToken() // consume comma
+
+		parameters = append(parameters, &ast.IdentifierExpression{
+			Token: p.currToken,
+			Value: p.currToken.Literal,
+		})
+	}
+
+	if !p.checkAndReadToken(tokens.RPAREN) {
+		return nil
+	}
+
+	return parameters
+}
+
+func (p *Parser) parseFunctionExpression() ast.Expression {
+	expr := &ast.FunctionExpression{
+		Token: p.currToken,
+	}
+
+	if !p.checkAndReadToken(tokens.LPAREN) {
+		return nil
+	}
+	expr.Parameters = p.parseFunctionParameters()
+
+	if !p.checkAndReadToken(tokens.LBRACE) {
+		return nil
+	}
+	expr.Body = p.parseBlockStatement()
+
+	return expr
+}
+
+func (p *Parser) parseCallArguments() []ast.Expression {
+	args := []ast.Expression{}
+
+	if p.isNextToken(tokens.RPAREN) {
+		p.readToken() // consume left paren
+		return args
+	}
+
+	p.readToken()
+
+	args = append(args, p.parseExpression(LOWEST))
+
+	for p.isNextToken(tokens.COMMA) {
+		p.readToken() // consume previous argument
+		p.readToken() // consume comma
+
+		args = append(args, p.parseExpression(LOWEST))
+	}
+
+	if !p.checkAndReadToken(tokens.RPAREN) {
+		return nil
+	}
+
+	return args
+}
+
+func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
+	expr := &ast.CallExpression{
+		Token: p.currToken,
+	}
+
+	identifier, ok := left.(*ast.IdentifierExpression)
+	if !ok {
+		p.addError(utils.ParseExpectedXExpressionErrorBuilder[*ast.IdentifierExpression](p.currToken, left))
+		return nil
+	}
+
+	expr.Identifier = identifier
+	expr.Arguments = p.parseCallArguments()
+
+	return expr
+}
+
 func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
 	expr := &ast.BinaryExpression{
 		Left:     left,
@@ -394,7 +490,7 @@ func (p *Parser) parseWhileStatement() *ast.WhileStatement {
 		return nil
 	}
 
-	stmt.Logic = p.parseBlockStatement()
+	stmt.Body = p.parseBlockStatement()
 	return stmt
 }
 
@@ -440,7 +536,7 @@ func (p *Parser) parseForStatement() *ast.ForStatement {
 		return nil
 	}
 
-	stmt.Logic = p.parseBlockStatement()
+	stmt.Body = p.parseBlockStatement()
 	return stmt
 }
 

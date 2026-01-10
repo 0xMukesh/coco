@@ -3,6 +3,7 @@ package ast
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
 )
@@ -130,7 +131,7 @@ func (be *BinaryExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(be.Left.String())
-	out.WriteString(" " + be.Operator.Literal + " ")
+	out.WriteString(" " + be.TokenLiteral() + " ")
 	out.WriteString(be.Right.String())
 
 	return out.String()
@@ -184,6 +185,62 @@ func (ie *IfExpression) String() string {
 	return out.String()
 }
 
+// fn (<parameters>) { <body> }
+type FunctionExpression struct {
+	Token      tokens.Token
+	Parameters []*IdentifierExpression
+	Body       *BlockStatement
+}
+
+func (fe *FunctionExpression) expressionNode() {}
+func (fe *FunctionExpression) TokenLiteral() string {
+	return fe.Token.Literal
+}
+func (fe *FunctionExpression) String() string {
+	var out bytes.Buffer
+
+	params := []string{}
+	for _, p := range fe.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(fe.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(")")
+	out.WriteString(" ")
+	out.WriteString(fe.Body.String())
+
+	return out.String()
+}
+
+// <identifier>(<arguments>)
+type CallExpression struct {
+	Token      tokens.Token
+	Identifier *IdentifierExpression
+	Arguments  []Expression
+}
+
+func (ce *CallExpression) expressionNode() {}
+func (ce *CallExpression) TokenLiteral() string {
+	return ce.Token.Literal
+}
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+
+	args := []string{}
+	for _, a := range ce.Arguments {
+		args = append(args, a.String())
+	}
+
+	out.WriteString(ce.Identifier.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
+
+	return out.String()
+}
+
 // let <identifier> = <value>
 // let <identifier>
 type LetStatement struct {
@@ -233,11 +290,11 @@ func (rs *ReturnStatement) String() string {
 	return out.String()
 }
 
-// while ( <condition> ) { <logic> }
+// while ( <condition> ) { <body> }
 type WhileStatement struct {
 	Token     tokens.Token
 	Condition Expression
-	Logic     *BlockStatement
+	Body      *BlockStatement
 }
 
 func (ws *WhileStatement) statementNode() {}
@@ -247,23 +304,23 @@ func (ws *WhileStatement) TokenLiteral() string {
 func (ws *WhileStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(ws.Token.Literal)
+	out.WriteString(ws.TokenLiteral())
 	out.WriteString(" ")
 	out.WriteString(ws.Condition.String())
 	out.WriteString(" ")
-	out.WriteString(ws.Logic.String())
+	out.WriteString(ws.Body.String())
 
 	return out.String()
 }
 
-// for ( ?(<initialization>); ?(<condition>); ?(<update>) ) { <logic> }
+// for ( ?(<initialization>); ?(<condition>); ?(<update>) ) { <body> }
 // ?(...) = optional
 type ForStatement struct {
 	Token          tokens.Token
 	Initialization Statement
 	Condition      Expression
 	Update         Expression
-	Logic          *BlockStatement
+	Body           *BlockStatement
 }
 
 func (fs *ForStatement) statementNode() {}
@@ -273,7 +330,7 @@ func (fs *ForStatement) TokenLiteral() string {
 func (fs *ForStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(fs.Token.Literal)
+	out.WriteString(fs.TokenLiteral())
 	out.WriteString(" ")
 	out.WriteString("(")
 
@@ -295,7 +352,7 @@ func (fs *ForStatement) String() string {
 
 	out.WriteString(")")
 	out.WriteString(" ")
-	out.WriteString(fs.Logic.String())
+	out.WriteString(fs.Body.String())
 
 	return out.String()
 }
