@@ -14,8 +14,13 @@ func ParserErrorBuilder(token tokens.Token, message string) string {
 	return fmt.Sprintf("[line %d, column %d:%d] %s", token.Line, token.StartColumn, token.EndColumn, message)
 }
 
-func ParserPeekCheckFailErrorBuilder(token tokens.Token, expectedTokenType tokens.TokenType) string {
+func ParserExpectedNextTokenToBeErrorBuilder(token tokens.Token, expectedTokenType tokens.TokenType) string {
 	msg := fmt.Sprintf("expected type of next token to be %s, got %s instead", expectedTokenType, token.Type)
+	return ParserErrorBuilder(token, msg)
+}
+
+func ParserExpectedCurrentTokenToBeErrorBuilder(token tokens.Token, expectedTokenType tokens.TokenType) string {
+	msg := fmt.Sprintf("expected type of current token to be %s, got %s instead", expectedTokenType, token.Type)
 	return ParserErrorBuilder(token, msg)
 }
 

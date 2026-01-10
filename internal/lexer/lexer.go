@@ -95,7 +95,6 @@ func (l *Lexer) readNumeric() string {
 		l.readChar()
 	}
 
-	// FIXME: check why semicolon gets included over here and not in readIdentifier
 	return l.input[startPosition : l.currPosition+1]
 }
 
@@ -113,7 +112,7 @@ func (l *Lexer) NextToken() tokens.Token {
 		tok = l.newToken(tokens.STAR, string(l.currChar))
 	case '/':
 		if l.peekChar() == '/' {
-			// current character is /
+			// current character is slash
 			l.readChar()
 
 			for l.currChar != '\n' && l.currChar != 0 {
@@ -124,9 +123,9 @@ func (l *Lexer) NextToken() tokens.Token {
 			// once new line is found `NextToken` is executed recursively, which runs `skipWhitespace`, which under the hood gets the next character
 			return l.NextToken()
 		} else if l.peekChar() == '*' {
-			// current character is *
+			// current character is star
 			l.readChar()
-			// consume *, current character is first character of comment
+			// consume star
 			l.readChar()
 
 			for {
@@ -135,9 +134,9 @@ func (l *Lexer) NextToken() tokens.Token {
 				}
 
 				if l.currChar == '*' && l.peekChar() == '/' {
-					// consume closing *, current character is /
+					// consume closing star
 					l.readChar()
-					// consume closing /, current character is next character
+					// consume closing slash
 					l.readChar()
 
 					return l.NextToken()
@@ -151,7 +150,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '=':
 		if l.peekChar() == '=' {
 			startColumn := l.column
-			// consume =
+			// consume assign token
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.EQUALS, startColumn, "==")
 		} else {
@@ -160,7 +159,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '<':
 		if l.peekChar() == '=' {
 			startColumn := l.column
-			// consume <
+			// consume lt token
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.LESS_THAN_EQUALS, startColumn, "<=")
 		} else {
@@ -169,7 +168,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '>':
 		if l.peekChar() == '=' {
 			startColumn := l.column
-			// consume >
+			// consume gt token
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.GREATER_THAN_EQUALS, startColumn, ">=")
 		} else {
@@ -178,7 +177,7 @@ func (l *Lexer) NextToken() tokens.Token {
 	case '!':
 		if l.peekChar() == '=' {
 			startColumn := l.column
-			// consume !
+			// consume bang token
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.NOT_EQUALS, startColumn, "!=")
 		} else {

@@ -155,6 +155,35 @@ func (ge *GroupedExpression) String() string {
 	return out.String()
 }
 
+// if (<condition>) { <consequence> } ?(else { <alternative> })
+// ?(...) = optional
+type IfExpression struct {
+	Token       tokens.Token
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) expressionNode() {}
+func (ie *IfExpression) TokenLiteral() string {
+	return ie.Token.Literal
+}
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("if ")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ie.Consequence.String())
+
+	if ie.Alternative != nil {
+		out.WriteString(" else ")
+		out.WriteString(ie.Alternative.String())
+	}
+
+	return out.String()
+}
+
 // let <identifier> = <value>
 // let <identifier>
 type LetStatement struct {
@@ -200,6 +229,95 @@ func (rs *ReturnStatement) String() string {
 		out.WriteString(" ")
 		out.WriteString(rs.Expr.String())
 	}
+
+	return out.String()
+}
+
+// while ( <condition> ) { <logic> }
+type WhileStatement struct {
+	Token     tokens.Token
+	Condition Expression
+	Logic     *BlockStatement
+}
+
+func (ws *WhileStatement) statementNode() {}
+func (ws *WhileStatement) TokenLiteral() string {
+	return ws.Token.Literal
+}
+func (ws *WhileStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ws.Token.Literal)
+	out.WriteString(" ")
+	out.WriteString(ws.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ws.Logic.String())
+
+	return out.String()
+}
+
+// for ( ?(<initialization>); ?(<condition>); ?(<update>) ) { <logic> }
+// ?(...) = optional
+type ForStatement struct {
+	Token          tokens.Token
+	Initialization Statement
+	Condition      Expression
+	Update         Expression
+	Logic          *BlockStatement
+}
+
+func (fs *ForStatement) statementNode() {}
+func (fs *ForStatement) TokenLiteral() string {
+	return fs.Token.Literal
+}
+func (fs *ForStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(fs.Token.Literal)
+	out.WriteString(" ")
+	out.WriteString("(")
+
+	if fs.Initialization != nil {
+		out.WriteString(fs.Initialization.String())
+	}
+
+	out.WriteString("; ")
+
+	if fs.Condition != nil {
+		out.WriteString(fs.Condition.String())
+	}
+
+	out.WriteString("; ")
+
+	if fs.Update != nil {
+		out.WriteString(fs.Update.String())
+	}
+
+	out.WriteString(")")
+	out.WriteString(" ")
+	out.WriteString(fs.Logic.String())
+
+	return out.String()
+}
+
+type BlockStatement struct {
+	Token      tokens.Token
+	Statements []Statement
+}
+
+func (bs *BlockStatement) statementNode() {}
+func (bs *BlockStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *BlockStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("{\n")
+	for _, stmt := range bs.Statements {
+		out.WriteString(stmt.String())
+		out.WriteString("\n")
+	}
+	out.WriteString("}")
 
 	return out.String()
 }

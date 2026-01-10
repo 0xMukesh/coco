@@ -66,6 +66,7 @@ func New(tks []tokens.Token) *Parser {
 	p.registerPrefixFn(tokens.MINUS, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.BANG, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.LPAREN, p.parseGroupedExpression)
+	p.registerPrefixFn(tokens.IF, p.parseIfExpression)
 
 	p.registerInfixFn(tokens.PLUS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.MINUS, p.parseBinaryExpression)
@@ -131,6 +132,10 @@ func (p *Parser) peekPrecedence() int {
 	return LOWEST
 }
 
+func (p *Parser) isCurrentToken(tt tokens.TokenType) bool {
+	return p.currToken.Type == tt
+}
+
 func (p *Parser) isNextToken(tt tokens.TokenType) bool {
 	nextToken := p.peekToken()
 	return nextToken.Type == tt
@@ -143,7 +148,7 @@ func (p *Parser) checkAndReadToken(tt tokens.TokenType) bool {
 		p.readToken()
 		return true
 	} else {
-		p.addError(utils.ParserPeekCheckFailErrorBuilder(nextToken, tt))
+		p.addError(utils.ParserExpectedNextTokenToBeErrorBuilder(nextToken, tt))
 		return false
 	}
 }
@@ -210,7 +215,8 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 	expr := &ast.GroupedExpression{}
 
 	lParenToken := p.currToken
-	p.readToken() // consume LPAREN
+	// consume left paren token
+	p.readToken()
 	expr.Expr = p.parseExpression(LOWEST)
 
 	if expr.Expr == nil {
@@ -220,6 +226,55 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 
 	if !p.checkAndReadToken(tokens.RPAREN) {
 		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseIfExpression() ast.Expression {
+	expr := &ast.IfExpression{
+		Token: p.currToken,
+	}
+	if !p.checkAndReadToken(tokens.LPAREN) {
+		return nil
+	}
+
+	expr.Condition = p.parseExpression(LOWEST)
+	if expr.Condition == nil {
+		p.addError(utils.ParserExpressionExpectedErrorBuilder(expr.Token))
+		return nil
+	}
+
+	if !p.checkAndReadToken(tokens.LBRACE) {
+		return nil
+	}
+
+	expr.Consequence = p.parseBlockStatement()
+
+	if p.isNextToken(tokens.ELSE) {
+		// land on else token
+		p.readToken()
+
+		if p.isNextToken(tokens.IF) {
+			// land on if token
+			p.readToken()
+
+			expr.Alternative = &ast.BlockStatement{
+				Token: p.currToken,
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Token: p.currToken,
+						Expr:  p.parseIfExpression(),
+					},
+				},
+			}
+		} else {
+			if !p.checkAndReadToken(tokens.LBRACE) {
+				return nil
+			}
+
+			expr.Alternative = p.parseBlockStatement()
+		}
 	}
 
 	return expr
@@ -319,6 +374,95 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
+func (p *Parser) parseWhileStatement() *ast.WhileStatement {
+	stmt := &ast.WhileStatement{
+		Token: p.currToken,
+	}
+
+	if !p.checkAndReadToken(tokens.LPAREN) {
+		return nil
+	}
+	lParenToken := p.currToken
+
+	stmt.Condition = p.parseExpression(LOWEST)
+	if stmt.Condition == nil {
+		p.addError(utils.ParserExpressionExpectedErrorBuilder(lParenToken))
+		return nil
+	}
+
+	if !p.checkAndReadToken(tokens.LBRACE) {
+		return nil
+	}
+
+	stmt.Logic = p.parseBlockStatement()
+	return stmt
+}
+
+func (p *Parser) parseForStatement() *ast.ForStatement {
+	stmt := &ast.ForStatement{
+		Token: p.currToken,
+	}
+	if !p.checkAndReadToken(tokens.LPAREN) {
+		return nil
+	}
+	// consume left paren
+	p.readToken()
+
+	if !p.isCurrentToken(tokens.SEMICOLON) {
+		// if initialization statement is not empty, then parse it
+		stmt.Initialization = p.parseStatement()
+	}
+
+	// consume the semicolon after initialization statement
+	p.readToken()
+
+	if !p.isCurrentToken(tokens.SEMICOLON) {
+		// if condition expression is not empty, then parse it
+		stmt.Condition = p.parseExpression(LOWEST)
+
+		// check if there is a semicolon after the condition expression
+		if !p.checkAndReadToken(tokens.SEMICOLON) {
+			return nil
+		}
+	}
+
+	// consume the semicolon after condition expression
+	p.readToken()
+
+	if !p.isCurrentToken(tokens.RPAREN) {
+		// if update expression is not empty, then parse it
+		stmt.Update = p.parseExpression(LOWEST)
+		// consume right paren token
+		p.readToken()
+	}
+
+	if !p.checkAndReadToken(tokens.LBRACE) {
+		return nil
+	}
+
+	stmt.Logic = p.parseBlockStatement()
+	return stmt
+}
+
+func (p *Parser) parseBlockStatement() *ast.BlockStatement {
+	block := &ast.BlockStatement{
+		Token: p.currToken,
+	}
+	block.Statements = []ast.Statement{}
+
+	p.readToken() // consume LBRACE
+	for !p.isCurrentToken(tokens.RBRACE) && !p.isCurrentToken(tokens.EOF) {
+		stmt := p.parseStatement()
+		if stmt != nil {
+			block.Statements = append(block.Statements, stmt)
+		}
+
+		p.readToken()
+	}
+
+	return block
+}
+
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt := &ast.ExpressionStatement{
 		Token: p.currToken,
@@ -338,6 +482,12 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case tokens.RETURN:
 		return p.parseReturnStatement()
+	case tokens.WHILE:
+		return p.parseWhileStatement()
+	case tokens.FOR:
+		return p.parseForStatement()
+	case tokens.LBRACE:
+		return p.parseBlockStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
