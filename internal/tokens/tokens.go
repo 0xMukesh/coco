@@ -31,6 +31,7 @@ const (
 
 	INCREMENT   = "++"
 	DECREMENT   = "--"
+	DOUBLE_STAR = "**"
 	PLUS_EQUAL  = "+="
 	MINUS_EQUAL = "-="
 	STAR_EQUAL  = "*="

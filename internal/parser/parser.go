@@ -12,26 +12,37 @@ import (
 const (
 	LOWEST = iota
 	ASSIGN
+	LOGICAL
 	EQUALS
-	LESS_GREATER
+	COMPARISON
 	SUM
 	PRODUCT
+	EXPONENTIATION
 	UNARY
 	FUNCTION_CALL
 )
 
 var precedenceTable = map[tokens.TokenType]int{
 	tokens.ASSIGN:              ASSIGN,
+	tokens.AND:                 LOGICAL,
+	tokens.OR:                  LOGICAL,
 	tokens.EQUALS:              EQUALS,
 	tokens.NOT_EQUALS:          EQUALS,
-	tokens.LESS_THAN:           LESS_GREATER,
-	tokens.GREATER_THAN:        LESS_GREATER,
-	tokens.LESS_THAN_EQUALS:    LESS_GREATER,
-	tokens.GREATER_THAN_EQUALS: LESS_GREATER,
+	tokens.LESS_THAN:           COMPARISON,
+	tokens.GREATER_THAN:        COMPARISON,
+	tokens.LESS_THAN_EQUALS:    COMPARISON,
+	tokens.GREATER_THAN_EQUALS: COMPARISON,
 	tokens.PLUS:                SUM,
 	tokens.MINUS:               SUM,
+	tokens.PLUS_EQUAL:          SUM,
+	tokens.MINUS_EQUAL:         SUM,
 	tokens.STAR:                PRODUCT,
 	tokens.SLASH:               PRODUCT,
+	tokens.STAR_EQUAL:          PRODUCT,
+	tokens.SLASH_EQUAL:         PRODUCT,
+	tokens.DOUBLE_STAR:         EXPONENTIATION,
+	tokens.INCREMENT:           UNARY,
+	tokens.DECREMENT:           UNARY,
 	tokens.LPAREN:              FUNCTION_CALL,
 }
 
@@ -67,6 +78,8 @@ func New(tks []tokens.Token) *Parser {
 	p.registerPrefixFn(tokens.FLOAT, p.parseFloatExpression)
 	p.registerPrefixFn(tokens.MINUS, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.BANG, p.parseUnaryExpression)
+	p.registerPrefixFn(tokens.INCREMENT, p.parseUnaryExpression)
+	p.registerPrefixFn(tokens.DECREMENT, p.parseUnaryExpression)
 	p.registerPrefixFn(tokens.LPAREN, p.parseGroupedExpression)
 	p.registerPrefixFn(tokens.IF, p.parseIfExpression)
 	p.registerPrefixFn(tokens.FUNCTION, p.parseFunctionExpression)
@@ -75,12 +88,19 @@ func New(tks []tokens.Token) *Parser {
 	p.registerInfixFn(tokens.MINUS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.STAR, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.SLASH, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.PLUS_EQUAL, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.MINUS_EQUAL, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.STAR_EQUAL, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.SLASH_EQUAL, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.LESS_THAN, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.GREATER_THAN, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.LESS_THAN_EQUALS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.GREATER_THAN_EQUALS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.EQUALS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.NOT_EQUALS, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.OR, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.AND, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.DOUBLE_STAR, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.LPAREN, p.parseCallExpression)
 
 	p.readToken()
@@ -394,7 +414,13 @@ func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
 	binaryOperator := p.currToken
 	p.readToken()
 
-	expr.Right = p.parseExpression(precedence)
+	// exponentiation is right associative
+	if binaryOperator.Type == tokens.DOUBLE_STAR {
+		expr.Right = p.parseExpression(precedence - 1)
+	} else {
+		expr.Right = p.parseExpression(precedence)
+	}
+
 	if expr.Right == nil {
 		p.addError(utils.ParserExpressionExpectedErrorBuilder(binaryOperator))
 		return nil
@@ -613,7 +639,11 @@ func (p *Parser) ParseProgram() *ast.Program {
 	return program
 }
 
-func (p *Parser) Error() []string {
+func (p *Parser) Errors() []string {
 	slices.Reverse(p.errors)
 	return p.errors
+}
+
+func (p *Parser) HasErrors() bool {
+	return len(p.errors) > 0
 }

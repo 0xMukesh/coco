@@ -154,6 +154,9 @@ func (l *Lexer) NextToken() tokens.Token {
 		if l.peekChar() == '=' {
 			l.readChar()
 			tok = l.newTokenWithExplicitStartColumn(tokens.STAR_EQUAL, startColumn, "*=")
+		} else if l.peekChar() == '*' {
+			l.readChar()
+			tok = l.newTokenWithExplicitStartColumn(tokens.DOUBLE_STAR, startColumn, "**")
 		} else {
 			tok = l.newToken(tokens.STAR, string(l.currChar))
 		}

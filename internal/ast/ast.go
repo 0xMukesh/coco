@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
+	"github.com/0xmukesh/coco/internal/types"
 )
 
 type Node interface {
@@ -16,6 +17,8 @@ type Node interface {
 type Expression interface {
 	Node
 	expressionNode()
+	GetType() types.Type
+	SetType(types.Type) types.Type
 }
 
 type Statement interface {
@@ -48,6 +51,7 @@ func (p *Program) String() string {
 type IdentifierExpression struct {
 	Token   tokens.Token
 	Literal string
+	Type    types.Type
 }
 
 func (ie *IdentifierExpression) expressionNode() {}
@@ -57,10 +61,18 @@ func (ie *IdentifierExpression) TokenLiteral() string {
 func (ie *IdentifierExpression) String() string {
 	return ie.Literal
 }
+func (ie *IdentifierExpression) GetType() types.Type {
+	return ie.Type
+}
+func (ie *IdentifierExpression) SetType(t types.Type) types.Type {
+	ie.Type = t
+	return t
+}
 
 type StringExpression struct {
 	Token tokens.Token
 	Value string
+	Type  types.Type
 }
 
 func (se *StringExpression) expressionNode() {}
@@ -70,10 +82,18 @@ func (se *StringExpression) TokenLiteral() string {
 func (se *StringExpression) String() string {
 	return se.Value
 }
+func (se *StringExpression) GetType() types.Type {
+	return se.Type
+}
+func (se *StringExpression) SetType(t types.Type) types.Type {
+	se.Type = t
+	return t
+}
 
 type BooleanExpression struct {
 	Token tokens.Token
 	Value bool
+	Type  types.Type
 }
 
 func (be *BooleanExpression) expressionNode() {}
@@ -83,10 +103,18 @@ func (be *BooleanExpression) TokenLiteral() string {
 func (be *BooleanExpression) String() string {
 	return fmt.Sprint(be.Value)
 }
+func (be *BooleanExpression) GetType() types.Type {
+	return be.Type
+}
+func (be *BooleanExpression) SetType(t types.Type) types.Type {
+	be.Type = t
+	return t
+}
 
 type IntegerExpression struct {
 	Token tokens.Token
 	Value int64
+	Type  types.Type
 }
 
 func (ie *IntegerExpression) expressionNode() {}
@@ -96,10 +124,18 @@ func (ie *IntegerExpression) TokenLiteral() string {
 func (ie *IntegerExpression) String() string {
 	return fmt.Sprint(ie.Value)
 }
+func (ie *IntegerExpression) GetType() types.Type {
+	return ie.Type
+}
+func (ie *IntegerExpression) SetType(t types.Type) types.Type {
+	ie.Type = t
+	return t
+}
 
 type FloatExpression struct {
 	Token tokens.Token
 	Value float64
+	Type  types.Type
 }
 
 func (fe *FloatExpression) expressionNode() {}
@@ -109,11 +145,19 @@ func (fe *FloatExpression) TokenLiteral() string {
 func (fe *FloatExpression) String() string {
 	return fmt.Sprint(fe.Value)
 }
+func (fe *FloatExpression) GetType() types.Type {
+	return fe.Type
+}
+func (fe *FloatExpression) SetType(t types.Type) types.Type {
+	fe.Type = t
+	return t
+}
 
 // <prefix><expression>
 type UnaryExpression struct {
 	Token tokens.Token
 	Expr  Expression
+	Type  types.Type
 }
 
 func (ue *UnaryExpression) expressionNode() {}
@@ -128,12 +172,20 @@ func (ue *UnaryExpression) String() string {
 
 	return out.String()
 }
+func (ue *UnaryExpression) GetType() types.Type {
+	return ue.Type
+}
+func (ue *UnaryExpression) SetType(t types.Type) types.Type {
+	ue.Type = t
+	return t
+}
 
 // <left><operator><right>
 type BinaryExpression struct {
 	Left     Expression
 	Operator tokens.Token
 	Right    Expression
+	Type     types.Type
 }
 
 func (be *BinaryExpression) expressionNode() {}
@@ -150,6 +202,13 @@ func (be *BinaryExpression) String() string {
 	out.WriteString(")")
 
 	return out.String()
+}
+func (be *BinaryExpression) GetType() types.Type {
+	return be.Type
+}
+func (be *BinaryExpression) SetType(t types.Type) types.Type {
+	be.Type = t
+	return t
 }
 
 type GroupedExpression struct {
@@ -170,6 +229,13 @@ func (ge *GroupedExpression) String() string {
 
 	return out.String()
 }
+func (ge *GroupedExpression) GetType() types.Type {
+	return ge.Expr.GetType()
+}
+func (ge *GroupedExpression) SetType(t types.Type) types.Type {
+	ge.Expr.SetType(t)
+	return t
+}
 
 // if (<condition>) { <consequence> } ?(else { <alternative> })
 // ?(...) = optional
@@ -178,6 +244,7 @@ type IfExpression struct {
 	Condition   Expression
 	Consequence *BlockStatement
 	Alternative *BlockStatement
+	Type        types.Type
 }
 
 func (ie *IfExpression) expressionNode() {}
@@ -199,12 +266,20 @@ func (ie *IfExpression) String() string {
 
 	return out.String()
 }
+func (ie *IfExpression) GetType() types.Type {
+	return ie.Type
+}
+func (ie *IfExpression) SetType(t types.Type) types.Type {
+	ie.Type = t
+	return t
+}
 
 // fn (<parameters>) { <body> }
 type FunctionExpression struct {
 	Token      tokens.Token
 	Parameters []*IdentifierExpression
 	Body       *BlockStatement
+	Type       types.Type
 }
 
 func (fe *FunctionExpression) expressionNode() {}
@@ -228,12 +303,20 @@ func (fe *FunctionExpression) String() string {
 
 	return out.String()
 }
+func (fe *FunctionExpression) GetType() types.Type {
+	return fe.Type
+}
+func (fe *FunctionExpression) SetType(t types.Type) types.Type {
+	fe.Type = t
+	return t
+}
 
 // <identifier>(<arguments>)
 type CallExpression struct {
 	Token      tokens.Token
 	Identifier *IdentifierExpression
 	Arguments  []Expression
+	Type       types.Type
 }
 
 func (ce *CallExpression) expressionNode() {}
@@ -254,6 +337,13 @@ func (ce *CallExpression) String() string {
 	out.WriteString(")")
 
 	return out.String()
+}
+func (ce *CallExpression) GetType() types.Type {
+	return ce.Type
+}
+func (ce *CallExpression) SetType(t types.Type) types.Type {
+	ce.Type = t
+	return t
 }
 
 // let <identifier> = <value>
