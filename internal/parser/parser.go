@@ -15,8 +15,10 @@ const (
 	LOGICAL
 	EQUALS
 	COMPARISON
-	SUM
-	PRODUCT
+	SUBTRACTION
+	ADDITION
+	MULTIPLICATION
+	DIVISION
 	EXPONENTIATION
 	UNARY
 	FUNCTION_CALL
@@ -32,14 +34,14 @@ var precedenceTable = map[tokens.TokenType]int{
 	tokens.GREATER_THAN:        COMPARISON,
 	tokens.LESS_THAN_EQUALS:    COMPARISON,
 	tokens.GREATER_THAN_EQUALS: COMPARISON,
-	tokens.PLUS:                SUM,
-	tokens.MINUS:               SUM,
-	tokens.PLUS_EQUAL:          SUM,
-	tokens.MINUS_EQUAL:         SUM,
-	tokens.STAR:                PRODUCT,
-	tokens.SLASH:               PRODUCT,
-	tokens.STAR_EQUAL:          PRODUCT,
-	tokens.SLASH_EQUAL:         PRODUCT,
+	tokens.MINUS:               SUBTRACTION,
+	tokens.MINUS_EQUAL:         SUBTRACTION,
+	tokens.PLUS:                ADDITION,
+	tokens.PLUS_EQUAL:          ADDITION,
+	tokens.STAR:                MULTIPLICATION,
+	tokens.STAR_EQUAL:          MULTIPLICATION,
+	tokens.SLASH:               DIVISION,
+	tokens.SLASH_EQUAL:         DIVISION,
 	tokens.DOUBLE_STAR:         EXPONENTIATION,
 	tokens.INCREMENT:           UNARY,
 	tokens.DECREMENT:           UNARY,
@@ -593,6 +595,20 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	return block
 }
 
+func (p *Parser) parseExitStatement() *ast.ExitStatement {
+	stmt := &ast.ExitStatement{
+		Token: p.currToken,
+	}
+	p.readToken()
+	stmt.Expr = p.parseExpression(LOWEST)
+
+	if p.isNextToken(tokens.SEMICOLON) {
+		p.readToken()
+	}
+
+	return stmt
+}
+
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt := &ast.ExpressionStatement{
 		Token: p.currToken,
@@ -618,6 +634,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case tokens.LBRACE:
 		return p.parseBlockStatement()
+	case tokens.EXIT:
+		return p.parseExitStatement()
 	default:
 		return p.parseExpressionStatement()
 	}

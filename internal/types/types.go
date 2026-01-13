@@ -1,4 +1,4 @@
-package types
+package cotypes
 
 type TypeCategory int
 

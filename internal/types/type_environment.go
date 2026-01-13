@@ -1,4 +1,4 @@
-package types
+package cotypes
 
 type TypeEnvironment struct {
 	store  map[string]Type

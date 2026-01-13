@@ -118,7 +118,7 @@ func (l *Lexer) readString(delim byte) string {
 	return out.String()
 }
 
-func (l *Lexer) NextToken() tokens.Token {
+func (l *Lexer) nextToken() tokens.Token {
 	var tok tokens.Token
 
 	l.skipWhitespace()
@@ -171,7 +171,7 @@ func (l *Lexer) NextToken() tokens.Token {
 			}
 
 			// once new line is found `NextToken` is executed recursively, which runs `skipWhitespace`, which under the hood gets the next character
-			return l.NextToken()
+			return l.nextToken()
 		} else if l.peekChar() == '*' {
 			// current character is star
 			l.readChar()
@@ -189,7 +189,7 @@ func (l *Lexer) NextToken() tokens.Token {
 					// consume closing slash
 					l.readChar()
 
-					return l.NextToken()
+					return l.nextToken()
 				}
 
 				l.readChar()
@@ -302,7 +302,7 @@ func (l *Lexer) NextToken() tokens.Token {
 func (l *Lexer) Lex() []tokens.Token {
 	var tks []tokens.Token
 
-	for tok := l.NextToken(); tok.Type != tokens.EOF; tok = l.NextToken() {
+	for tok := l.nextToken(); tok.Type != tokens.EOF; tok = l.nextToken() {
 		tks = append(tks, tok)
 	}
 

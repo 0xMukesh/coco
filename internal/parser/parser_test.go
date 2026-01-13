@@ -41,7 +41,7 @@ let if_true = if (is_true) {
 while (is_true) {
 	1 + 1;
 }
-	
+
 for (let a = 1; a >= 4; a) {}
 for (let a = 1; ;a) {}
 for (let a = 1;;) {}
@@ -49,7 +49,15 @@ for (; a >= 4; a) {}
 for (; a >= 4;) {}
 for (; ; a) {}
 2 + 3 + 4
-2 ** 3 ** 4`
+2 ** 3 ** 4
+
+let something = fn (x, y, z) {
+	return x + y + z;
+}
+
+something(1, 2, 3);
+
+exit 1;`
 
 	l := lexer.New(source)
 	tks := l.Lex()

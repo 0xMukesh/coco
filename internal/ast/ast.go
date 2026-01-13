@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
-	"github.com/0xmukesh/coco/internal/types"
+	cotypes "github.com/0xmukesh/coco/internal/types"
 )
 
 type Node interface {
@@ -17,8 +17,8 @@ type Node interface {
 type Expression interface {
 	Node
 	expressionNode()
-	GetType() types.Type
-	SetType(types.Type) types.Type
+	GetType() cotypes.Type
+	SetType(cotypes.Type) cotypes.Type
 }
 
 type Statement interface {
@@ -51,7 +51,7 @@ func (p *Program) String() string {
 type IdentifierExpression struct {
 	Token   tokens.Token
 	Literal string
-	Type    types.Type
+	Type    cotypes.Type
 }
 
 func (ie *IdentifierExpression) expressionNode() {}
@@ -61,10 +61,10 @@ func (ie *IdentifierExpression) TokenLiteral() string {
 func (ie *IdentifierExpression) String() string {
 	return ie.Literal
 }
-func (ie *IdentifierExpression) GetType() types.Type {
+func (ie *IdentifierExpression) GetType() cotypes.Type {
 	return ie.Type
 }
-func (ie *IdentifierExpression) SetType(t types.Type) types.Type {
+func (ie *IdentifierExpression) SetType(t cotypes.Type) cotypes.Type {
 	ie.Type = t
 	return t
 }
@@ -72,7 +72,7 @@ func (ie *IdentifierExpression) SetType(t types.Type) types.Type {
 type StringExpression struct {
 	Token tokens.Token
 	Value string
-	Type  types.Type
+	Type  cotypes.Type
 }
 
 func (se *StringExpression) expressionNode() {}
@@ -82,10 +82,10 @@ func (se *StringExpression) TokenLiteral() string {
 func (se *StringExpression) String() string {
 	return se.Value
 }
-func (se *StringExpression) GetType() types.Type {
+func (se *StringExpression) GetType() cotypes.Type {
 	return se.Type
 }
-func (se *StringExpression) SetType(t types.Type) types.Type {
+func (se *StringExpression) SetType(t cotypes.Type) cotypes.Type {
 	se.Type = t
 	return t
 }
@@ -93,7 +93,7 @@ func (se *StringExpression) SetType(t types.Type) types.Type {
 type BooleanExpression struct {
 	Token tokens.Token
 	Value bool
-	Type  types.Type
+	Type  cotypes.Type
 }
 
 func (be *BooleanExpression) expressionNode() {}
@@ -103,10 +103,10 @@ func (be *BooleanExpression) TokenLiteral() string {
 func (be *BooleanExpression) String() string {
 	return fmt.Sprint(be.Value)
 }
-func (be *BooleanExpression) GetType() types.Type {
+func (be *BooleanExpression) GetType() cotypes.Type {
 	return be.Type
 }
-func (be *BooleanExpression) SetType(t types.Type) types.Type {
+func (be *BooleanExpression) SetType(t cotypes.Type) cotypes.Type {
 	be.Type = t
 	return t
 }
@@ -114,7 +114,7 @@ func (be *BooleanExpression) SetType(t types.Type) types.Type {
 type IntegerExpression struct {
 	Token tokens.Token
 	Value int64
-	Type  types.Type
+	Type  cotypes.Type
 }
 
 func (ie *IntegerExpression) expressionNode() {}
@@ -124,10 +124,10 @@ func (ie *IntegerExpression) TokenLiteral() string {
 func (ie *IntegerExpression) String() string {
 	return fmt.Sprint(ie.Value)
 }
-func (ie *IntegerExpression) GetType() types.Type {
+func (ie *IntegerExpression) GetType() cotypes.Type {
 	return ie.Type
 }
-func (ie *IntegerExpression) SetType(t types.Type) types.Type {
+func (ie *IntegerExpression) SetType(t cotypes.Type) cotypes.Type {
 	ie.Type = t
 	return t
 }
@@ -135,7 +135,7 @@ func (ie *IntegerExpression) SetType(t types.Type) types.Type {
 type FloatExpression struct {
 	Token tokens.Token
 	Value float64
-	Type  types.Type
+	Type  cotypes.Type
 }
 
 func (fe *FloatExpression) expressionNode() {}
@@ -145,10 +145,10 @@ func (fe *FloatExpression) TokenLiteral() string {
 func (fe *FloatExpression) String() string {
 	return fmt.Sprint(fe.Value)
 }
-func (fe *FloatExpression) GetType() types.Type {
+func (fe *FloatExpression) GetType() cotypes.Type {
 	return fe.Type
 }
-func (fe *FloatExpression) SetType(t types.Type) types.Type {
+func (fe *FloatExpression) SetType(t cotypes.Type) cotypes.Type {
 	fe.Type = t
 	return t
 }
@@ -157,7 +157,7 @@ func (fe *FloatExpression) SetType(t types.Type) types.Type {
 type UnaryExpression struct {
 	Token tokens.Token
 	Expr  Expression
-	Type  types.Type
+	Type  cotypes.Type
 }
 
 func (ue *UnaryExpression) expressionNode() {}
@@ -172,10 +172,10 @@ func (ue *UnaryExpression) String() string {
 
 	return out.String()
 }
-func (ue *UnaryExpression) GetType() types.Type {
+func (ue *UnaryExpression) GetType() cotypes.Type {
 	return ue.Type
 }
-func (ue *UnaryExpression) SetType(t types.Type) types.Type {
+func (ue *UnaryExpression) SetType(t cotypes.Type) cotypes.Type {
 	ue.Type = t
 	return t
 }
@@ -185,7 +185,7 @@ type BinaryExpression struct {
 	Left     Expression
 	Operator tokens.Token
 	Right    Expression
-	Type     types.Type
+	Type     cotypes.Type
 }
 
 func (be *BinaryExpression) expressionNode() {}
@@ -203,10 +203,10 @@ func (be *BinaryExpression) String() string {
 
 	return out.String()
 }
-func (be *BinaryExpression) GetType() types.Type {
+func (be *BinaryExpression) GetType() cotypes.Type {
 	return be.Type
 }
-func (be *BinaryExpression) SetType(t types.Type) types.Type {
+func (be *BinaryExpression) SetType(t cotypes.Type) cotypes.Type {
 	be.Type = t
 	return t
 }
@@ -229,10 +229,10 @@ func (ge *GroupedExpression) String() string {
 
 	return out.String()
 }
-func (ge *GroupedExpression) GetType() types.Type {
+func (ge *GroupedExpression) GetType() cotypes.Type {
 	return ge.Expr.GetType()
 }
-func (ge *GroupedExpression) SetType(t types.Type) types.Type {
+func (ge *GroupedExpression) SetType(t cotypes.Type) cotypes.Type {
 	ge.Expr.SetType(t)
 	return t
 }
@@ -244,7 +244,7 @@ type IfExpression struct {
 	Condition   Expression
 	Consequence *BlockStatement
 	Alternative *BlockStatement
-	Type        types.Type
+	Type        cotypes.Type
 }
 
 func (ie *IfExpression) expressionNode() {}
@@ -266,10 +266,10 @@ func (ie *IfExpression) String() string {
 
 	return out.String()
 }
-func (ie *IfExpression) GetType() types.Type {
+func (ie *IfExpression) GetType() cotypes.Type {
 	return ie.Type
 }
-func (ie *IfExpression) SetType(t types.Type) types.Type {
+func (ie *IfExpression) SetType(t cotypes.Type) cotypes.Type {
 	ie.Type = t
 	return t
 }
@@ -279,7 +279,7 @@ type FunctionExpression struct {
 	Token      tokens.Token
 	Parameters []*IdentifierExpression
 	Body       *BlockStatement
-	Type       types.Type
+	Type       cotypes.Type
 }
 
 func (fe *FunctionExpression) expressionNode() {}
@@ -303,10 +303,10 @@ func (fe *FunctionExpression) String() string {
 
 	return out.String()
 }
-func (fe *FunctionExpression) GetType() types.Type {
+func (fe *FunctionExpression) GetType() cotypes.Type {
 	return fe.Type
 }
-func (fe *FunctionExpression) SetType(t types.Type) types.Type {
+func (fe *FunctionExpression) SetType(t cotypes.Type) cotypes.Type {
 	fe.Type = t
 	return t
 }
@@ -316,7 +316,7 @@ type CallExpression struct {
 	Token      tokens.Token
 	Identifier *IdentifierExpression
 	Arguments  []Expression
-	Type       types.Type
+	Type       cotypes.Type
 }
 
 func (ce *CallExpression) expressionNode() {}
@@ -338,10 +338,10 @@ func (ce *CallExpression) String() string {
 
 	return out.String()
 }
-func (ce *CallExpression) GetType() types.Type {
+func (ce *CallExpression) GetType() cotypes.Type {
 	return ce.Type
 }
-func (ce *CallExpression) SetType(t types.Type) types.Type {
+func (ce *CallExpression) SetType(t cotypes.Type) cotypes.Type {
 	ce.Type = t
 	return t
 }
@@ -480,6 +480,24 @@ func (bs *BlockStatement) String() string {
 		out.WriteString("\n")
 	}
 	out.WriteString("}")
+
+	return out.String()
+}
+
+type ExitStatement struct {
+	Token tokens.Token
+	Expr  Expression
+}
+
+func (es *ExitStatement) statementNode() {}
+func (es *ExitStatement) TokenLiteral() string {
+	return es.Token.Literal
+}
+func (es *ExitStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(es.TokenLiteral() + " ")
+	out.WriteString(es.Expr.String())
 
 	return out.String()
 }

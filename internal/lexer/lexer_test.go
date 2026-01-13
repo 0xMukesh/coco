@@ -80,7 +80,7 @@ const xyz
 	l := New(source)
 
 	for i, tt := range tests {
-		tok := l.NextToken()
+		tok := l.nextToken()
 
 		if tt.wantTokenType != tok.Type {
 			t.Fatal(utils.TestMismatchErrorBuilder(i, "token type", tt.wantTokenType, tok.Type))

@@ -5,42 +5,42 @@ import (
 
 	"github.com/0xmukesh/coco/internal/ast"
 	"github.com/0xmukesh/coco/internal/tokens"
-	"github.com/0xmukesh/coco/internal/types"
+	cotypes "github.com/0xmukesh/coco/internal/types"
 )
 
 type TypeChecker struct {
-	env    *types.TypeEnvironment
+	env    *cotypes.TypeEnvironment
 	errors []string
 }
 
-func New(env *types.TypeEnvironment) *TypeChecker {
+func New(env *cotypes.TypeEnvironment) *TypeChecker {
 	return &TypeChecker{
 		env:    env,
 		errors: []string{},
 	}
 }
 
-func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) types.Type {
+func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) cotypes.Type {
 	leftType := tc.checkExpression(expr.Left)
 	rightType := tc.checkExpression(expr.Right)
-	leftTypeCategory := types.GetTypeCategory(leftType)
-	rightTypeCategory := types.GetTypeCategory(rightType)
+	leftTypeCategory := cotypes.GetTypeCategory(leftType)
+	rightTypeCategory := cotypes.GetTypeCategory(rightType)
 
 	op := expr.Operator.Type
 	isComparisonOperator := op == tokens.LESS_THAN || op == tokens.GREATER_THAN || op == tokens.LESS_THAN_EQUALS || op == tokens.GREATER_THAN_EQUALS || op == tokens.EQUALS || op == tokens.NOT_EQUALS
 
 	// numeric types (int, float)
-	if leftTypeCategory == types.CategoryNumeric && rightTypeCategory == types.CategoryNumeric {
+	if leftTypeCategory == cotypes.CategoryNumeric && rightTypeCategory == cotypes.CategoryNumeric {
 		// arithmetic operators
 		if op == tokens.PLUS || op == tokens.MINUS || op == tokens.STAR || op == tokens.SLASH || op == tokens.DOUBLE_STAR {
 			// if it is numeric arithmetic and either one of them is float, then result type is float
 			// and the one which is integer is converted to float expression
-			if leftType.Equals(types.FloatType{}) || rightType.Equals(types.FloatType{}) {
+			if leftType.Equals(cotypes.FloatType{}) || rightType.Equals(cotypes.FloatType{}) {
 				if leftIntLit, ok := expr.Left.(*ast.IntegerExpression); ok {
 					expr.Left = &ast.FloatExpression{
 						Token: leftIntLit.Token,
 						Value: float64(leftIntLit.Value),
-						Type:  types.FloatType{},
+						Type:  cotypes.FloatType{},
 					}
 				}
 
@@ -48,39 +48,39 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) types.T
 					expr.Right = &ast.FloatExpression{
 						Token: rightIntLit.Token,
 						Value: float64(rightIntLit.Value),
-						Type:  types.FloatType{},
+						Type:  cotypes.FloatType{},
 					}
 				}
 
-				return expr.SetType(types.FloatType{})
+				return expr.SetType(cotypes.FloatType{})
 			} else {
-				return expr.SetType(types.IntType{})
+				return expr.SetType(cotypes.IntType{})
 			}
 		}
 
 		// comparison operators
 		if isComparisonOperator {
-			return expr.SetType(types.BoolType{})
+			return expr.SetType(cotypes.BoolType{})
 		}
 	}
 
 	// strings
-	if leftType.Equals(types.StringType{}) && rightType.Equals(types.StringType{}) {
+	if leftType.Equals(cotypes.StringType{}) && rightType.Equals(cotypes.StringType{}) {
 		// string concatenation
 		if op == tokens.PLUS {
-			return expr.SetType(types.StringType{})
+			return expr.SetType(cotypes.StringType{})
 		}
 
 		// lexicographical comparison
 		if isComparisonOperator {
-			return expr.SetType(types.BoolType{})
+			return expr.SetType(cotypes.BoolType{})
 		}
 	}
 
 	// bools
-	if leftType.Equals(types.BoolType{}) && rightType.Equals(types.BoolType{}) {
+	if leftType.Equals(cotypes.BoolType{}) && rightType.Equals(cotypes.BoolType{}) {
 		if isComparisonOperator {
-			return expr.SetType(types.BoolType{})
+			return expr.SetType(cotypes.BoolType{})
 		}
 	}
 
@@ -88,19 +88,33 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) types.T
 	return leftType
 }
 
-func (tc *TypeChecker) checkExpression(expr ast.Expression) types.Type {
+func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
+	var t cotypes.Type = nil
+
 	switch e := expr.(type) {
 	case *ast.IntegerExpression:
-		return types.IntType{}
+		t = cotypes.IntType{}
+	case *ast.FloatExpression:
+		t = cotypes.FloatType{}
 	case *ast.StringExpression:
-		return types.StringType{}
+		t = cotypes.StringType{}
 	case *ast.BooleanExpression:
-		return types.BoolType{}
+		t = cotypes.BoolType{}
 	case *ast.BinaryExpression:
-		return tc.checkBinaryExpression(e)
+		t = tc.checkBinaryExpression(e)
 	default:
 		tc.addError("unknown expression of type %T", expr)
-		return nil
+	}
+
+	expr.SetType(t)
+	return t
+}
+
+func (tc *TypeChecker) checkExitStatement(stmt *ast.ExitStatement) {
+	exprType := tc.checkExpression(stmt.Expr)
+
+	if !exprType.Equals(cotypes.IntType{}) {
+		tc.addError("expected exit code to an integer, got %q", exprType)
 	}
 }
 
@@ -108,6 +122,8 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) {
 	switch s := stmt.(type) {
 	case *ast.ExpressionStatement:
 		tc.checkExpression(s.Expr)
+	case *ast.ExitStatement:
+		tc.checkExitStatement(s)
 	}
 }
 
