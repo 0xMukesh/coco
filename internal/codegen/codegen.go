@@ -35,15 +35,14 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) value.Va
 	right := cg.generateExpression(expr.Right)
 
 	// TODO: only int types are handled
+	// TODO: add integer division inst.
 	switch expr.Operator.Type {
 	case tokens.PLUS:
 		return cg.builder.NewAdd(left, right)
 	case tokens.MINUS:
-		return cg.builder.NewAdd(left, right)
+		return cg.builder.NewSub(left, right)
 	case tokens.STAR:
-		return cg.builder.NewAdd(left, right)
-	case tokens.SLASH:
-		return cg.builder.NewAdd(left, right)
+		return cg.builder.NewMul(left, right)
 	default:
 		return nil
 	}

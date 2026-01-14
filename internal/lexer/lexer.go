@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
@@ -78,44 +79,77 @@ func (l *Lexer) peekChar() byte {
 func (l *Lexer) readIdentifier() string {
 	startPosition := l.currPosition
 
-	// check if the next character is letter
+	// check if the next character is letter or number
 	// if yes, then consume it
-	for utils.IsLetter(l.peekChar()) {
+	for utils.IsLetter(l.peekChar()) || utils.IsDigit(l.peekChar()) {
 		l.readChar()
 	}
 
 	return l.input[startPosition : l.currPosition+1]
 }
 
-func (l *Lexer) readNumeric() string {
+func (l *Lexer) readNumeric(skipDot bool) string {
 	startPosition := l.currPosition
+	decimalSeparatorSeen := false
 
 	// check if next character is numeric i.e. is a either a digit or "."
 	// if yes, then consume it
-	for utils.IsDigit(l.peekChar()) || l.peekChar() == '.' {
+	for utils.IsDigit(l.peekChar()) || (!skipDot && !decimalSeparatorSeen && l.peekChar() == '.') {
+		if l.peekChar() == '.' {
+			decimalSeparatorSeen = true
+		}
+
 		l.readChar()
 	}
 
 	return l.input[startPosition : l.currPosition+1]
 }
 
-func (l *Lexer) readString(delim byte) string {
+func (l *Lexer) readString(delim byte) (string, error) {
 	var out bytes.Buffer
+	foundClosingDelim := false
+
+	out.WriteByte(delim) // writing starting delim to the token literal
 
 	for {
 		l.readChar()
+
+		if l.currChar == delim {
+			foundClosingDelim = true
+		}
+
 		if l.currChar == delim || l.currChar == 0 {
+			out.WriteByte(l.currChar) // writing closing delim to the token literal
 			break
 		}
 
 		if l.currChar == '\\' {
-			l.readChar()
+			if utils.IsEscapeSequenceCode(l.peekChar()) {
+				escapeSequenceCode := l.peekChar()
+				l.readChar()
+
+				if escapeSequenceCode == 'n' {
+					out.WriteByte('\n')
+				} else if escapeSequenceCode == 't' {
+					out.WriteByte('\t')
+				} else if escapeSequenceCode == '"' && delim == '"' {
+					out.WriteByte('"')
+				}
+
+				continue
+			} else {
+				return "", errors.New("invalid escape character")
+			}
 		}
 
 		out.WriteByte(l.currChar)
 	}
 
-	return out.String()
+	if foundClosingDelim {
+		return out.String(), nil
+	} else {
+		return out.String(), errors.New("unterminated string")
+	}
 }
 
 func (l *Lexer) nextToken() tokens.Token {
@@ -197,7 +231,7 @@ func (l *Lexer) nextToken() tokens.Token {
 		} else if l.peekChar() == '=' {
 			startColumn := l.column
 			l.readChar()
-			tok = l.newTokenWithExplicitStartColumn(tokens.SLASH_EQUAL, startColumn, string(l.currChar))
+			tok = l.newTokenWithExplicitStartColumn(tokens.SLASH_EQUAL, startColumn, "/=")
 		} else {
 			tok = l.newToken(tokens.SLASH, string(l.currChar))
 		}
@@ -269,10 +303,15 @@ func (l *Lexer) nextToken() tokens.Token {
 		tok = l.newToken(tokens.COMMA, string(l.currChar))
 	case ':':
 		tok = l.newToken(tokens.COLON, string(l.currChar))
-	case '"', '\'':
+	case '"':
 		startColumn := l.column + 1
-		str := l.readString(l.currChar)
-		tok = l.newTokenWithExplicitStartColumn(tokens.STRING, startColumn, str)
+		str, err := l.readString(l.currChar)
+
+		if err != nil {
+			tok = l.newTokenWithExplicitStartColumn(tokens.ILLEGAL, startColumn, err.Error())
+		} else {
+			tok = l.newTokenWithExplicitStartColumn(tokens.STRING, startColumn, str)
+		}
 	case 0:
 		tok = l.newToken(tokens.EOF, "")
 	default:
@@ -283,7 +322,7 @@ func (l *Lexer) nextToken() tokens.Token {
 			tok = l.newTokenWithExplicitStartColumn(tokens.IdentTokenTypeLookup(identifier), startColumn, identifier)
 		} else if utils.IsDigit(l.currChar) {
 			startColumn := l.column
-			numeric := l.readNumeric()
+			numeric := l.readNumeric(false)
 
 			if strings.Contains(numeric, ".") {
 				tok = l.newTokenWithExplicitStartColumn(tokens.FLOAT, startColumn, numeric)

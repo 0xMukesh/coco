@@ -4,102 +4,166 @@ import (
 	"testing"
 
 	"github.com/0xmukesh/coco/internal/tokens"
-	"github.com/0xmukesh/coco/internal/utils"
 )
 
-// FIXME: setup proper unit tests for lexer
-func TestLexer(t *testing.T) {
-	source := `+-*/
-(){}
-  !<>
-=
-== >= <=
-!=
-
-// this is a single line comment
-
-/*
-this
-is
-a
-multi line
-comment
-*/
-
-==
-
-// test test
-
-/*
-test test
-*/
-
-abc
-let +
-const xyz
-
-2345 3.456
-3. ** 4. ** 5.`
-	tests := []struct {
-		wantTokenType   tokens.TokenType
-		wantLiteral     string
-		wantLine        int
-		wantStartColumn int
-		wantEndColumn   int
-	}{
-		{tokens.PLUS, "+", 1, 0, 1},
-		{tokens.MINUS, "-", 1, 1, 2},
-		{tokens.STAR, "*", 1, 2, 3},
-		{tokens.SLASH, "/", 1, 3, 4},
-		{tokens.LPAREN, "(", 2, 0, 1},
-		{tokens.RPAREN, ")", 2, 1, 2},
-		{tokens.LBRACE, "{", 2, 2, 3},
-		{tokens.RBRACE, "}", 2, 3, 4},
-		{tokens.BANG, "!", 3, 2, 3},
-		{tokens.LESS_THAN, "<", 3, 3, 4},
-		{tokens.GREATER_THAN, ">", 3, 4, 5},
-		{tokens.ASSIGN, "=", 4, 0, 1},
-		{tokens.EQUALS, "==", 5, 0, 2},
-		{tokens.GREATER_THAN_EQUALS, ">=", 5, 3, 5},
-		{tokens.LESS_THAN_EQUALS, "<=", 5, 6, 8},
-		{tokens.NOT_EQUALS, "!=", 6, 0, 2},
-		{tokens.EQUALS, "==", 18, 0, 2},
-		{tokens.IDENTIFIER, "abc", 26, 0, 3},
-		{tokens.LET, "let", 27, 0, 3},
-		{tokens.PLUS, "+", 27, 4, 5},
-		{tokens.CONST, "const", 28, 0, 5},
-		{tokens.IDENTIFIER, "xyz", 28, 6, 9},
-		{tokens.INTEGER, "2345", 30, 0, 4},
-		{tokens.FLOAT, "3.456", 30, 5, 10},
-		{tokens.FLOAT, "3.", 31, 0, 2},
-		{tokens.DOUBLE_STAR, "**", 31, 3, 5},
-		{tokens.FLOAT, "4.", 31, 6, 8},
-		{tokens.DOUBLE_STAR, "**", 31, 9, 11},
-		{tokens.FLOAT, "5.", 31, 12, 14},
+func TestLexer_SingleCharacterTokens(t *testing.T) {
+	tests := []lexerTestItem{
+		newLexerTest("plus", "+", tokens.PLUS),
+		newLexerTest("minus", "-", tokens.MINUS),
+		newLexerTest("star", "*", tokens.STAR),
+		newLexerTest("slash", "/", tokens.SLASH),
+		newLexerTest("modulo", "%", tokens.MODULO),
+		newLexerTest("assign", "=", tokens.ASSIGN),
+		newLexerTest("less than", "<", tokens.LESS_THAN),
+		newLexerTest("greater than", ">", tokens.GREATER_THAN),
+		newLexerTest("bang", "!", tokens.BANG),
+		newLexerTest("left paren", "(", tokens.LPAREN),
+		newLexerTest("right paren", ")", tokens.RPAREN),
+		newLexerTest("left brace", "{", tokens.LBRACE),
+		newLexerTest("right brace", "}", tokens.RBRACE),
+		newLexerTest("left square", "[", tokens.LSQUARE),
+		newLexerTest("right square", "]", tokens.RSQUARE),
+		newLexerTest("comman", ",", tokens.COMMA),
+		newLexerTest("semicolon", ";", tokens.SEMICOLON),
+		newLexerTest("colon", ":", tokens.COLON),
+		newLexerTest("illegal", "#", tokens.ILLEGAL),
 	}
-	l := New(source)
 
-	for i, tt := range tests {
-		tok := l.nextToken()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
 
-		if tt.wantTokenType != tok.Type {
-			t.Fatal(utils.TestMismatchErrorBuilder(i, "token type", tt.wantTokenType, tok.Type))
-		}
+func TestLexer_MultiCharacterTokens(t *testing.T) {
+	tests := []lexerTestItem{
+		newLexerTest("equals", "==", tokens.EQUALS),
+		newLexerTest("not equals", "!=", tokens.NOT_EQUALS),
+		newLexerTest("less than equals", "<=", tokens.LESS_THAN_EQUALS),
+		newLexerTest("greater than equals", ">=", tokens.GREATER_THAN_EQUALS),
+		newLexerTest("and", "&&", tokens.AND),
+		newLexerTest("or", "||", tokens.OR),
+		newLexerTest("increment", "++", tokens.INCREMENT),
+		newLexerTest("decrement", "--", tokens.DECREMENT),
+		newLexerTest("double star", "**", tokens.DOUBLE_STAR),
+		newLexerTest("plus equal", "+=", tokens.PLUS_EQUAL),
+		newLexerTest("minus equal", "-=", tokens.MINUS_EQUAL),
+		newLexerTest("star equal", "*=", tokens.STAR_EQUAL),
+		newLexerTest("slash equal", "/=", tokens.SLASH_EQUAL),
+	}
 
-		if tt.wantLiteral != tok.Literal {
-			t.Fatal(utils.TestMismatchErrorBuilder(i, "token literal", tt.wantLiteral, tok.Literal))
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
 
-		if tt.wantLine != tok.Line {
-			t.Fatal(utils.TestMismatchErrorBuilder(i, "token line", tt.wantLine, tok.Line))
-		}
+func TestLexer_KeywordsAndIdentifiers(t *testing.T) {
+	tests := []lexerTestItem{}
 
-		if tt.wantStartColumn != tok.StartColumn {
-			t.Fatal(utils.TestMismatchErrorBuilder(i, "token start column", tt.wantStartColumn, tok.StartColumn))
-		}
+	for k, v := range tokens.PROGRAM_KEYWORDS {
+		tests = append(tests, newLexerTest(k, k, v))
+	}
 
-		if tt.wantEndColumn != tok.EndColumn {
-			t.Fatal(utils.TestMismatchErrorBuilder(i, "token end column", tt.wantEndColumn, tok.EndColumn))
-		}
+	tests = append(tests, newLexerTest("letter", "letter", tokens.IDENTIFIER), newLexerTest("let_x", "let_x", tokens.IDENTIFIER), newLexerTest("let2", "let2", tokens.IDENTIFIER), newLexerTestFail("2let", "2let", expectWrongTokenLiteral()))
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
+
+func TestLexer_IntegerLiterals(t *testing.T) {
+	tests := []lexerTestItem{
+		newLexerTest("zero", "0", tokens.INTEGER),
+		newLexerTest("simple", "123", tokens.INTEGER),
+		newLexerTest("large", "999999", tokens.INTEGER),
+		newLexerTest("leading zero", "007", tokens.INTEGER),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
+
+func TestLexer_FloatLiterals(t *testing.T) {
+	tests := []lexerTestItem{
+		newLexerTest("simple", "123.34", tokens.FLOAT),
+		newLexerTest("no trailing digit", "123.", tokens.FLOAT),
+		newLexerTestFail("malformed with leading digit", "123.34.45", expectMalformedFloatLiteral()),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
+
+func TestLexer_StringLiterals(t *testing.T) {
+	tests := []lexerTestItem{
+		newLexerTest("simple", `"hello world"`, tokens.STRING),
+		newLexerTest("empty", `""`, tokens.STRING),
+		newLexerTest("newline escape", `"hello\nworld"`, tokens.STRING),
+		newLexerTest("newline", `"\n"`, tokens.STRING),
+		newLexerTest("tab escape", `"hello\tworld"`, tokens.STRING),
+		newLexerTest("tab", `"\t"`, tokens.STRING),
+		newLexerTest("double quotes", `"hello \"world\""`, tokens.STRING),
+		newLexerTest("with single quotes", `"hello 'world'"`, tokens.STRING),
+		newLexerTestFail("unterminated", `"hello`, expectIllegalToken("unterminated string")),
+		newLexerTestFail("invalid escape character", `"hello\z"`, expectIllegalToken("invalid escape character")),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
+
+func TestLexer_Whitespace(t *testing.T) {
+	tokenTypes := []tokens.TokenType{tokens.INTEGER, tokens.PLUS, tokens.INTEGER}
+	tokenLiterals := []string{"5", "+", "2"}
+
+	tests := []lexerTestItem{
+		newLexerTestVerbose("no spaces", "5+2", tokenTypes, tokenLiterals),
+		newLexerTestVerbose("simple spaces", "5 + 2", tokenTypes, tokenLiterals),
+		newLexerTestVerbose("many spaces", "5    +    2", tokenTypes, tokenLiterals),
+		newLexerTestVerbose("tabs", "5\t\t+\t\t2", tokenTypes, tokenLiterals),
+		newLexerTestVerbose("newline", "5\n\n+\n\n2", tokenTypes, tokenLiterals),
+		newLexerTestVerbose("mixed", "5   \n\n  \t\t+\t\t\n  2", tokenTypes, tokenLiterals),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
+	}
+}
+
+func TestLexer_Comments(t *testing.T) {
+	tokensTypes := []tokens.TokenType{tokens.INTEGER}
+	tokenLiterals := []string{"5"}
+
+	tests := []lexerTestItem{
+		newLexerTestVerbose("simple", `// hello world
+5`, tokensTypes, tokenLiterals),
+		newLexerTestVerbose("multiple comments", `// hello world
+5 // test`, tokensTypes, tokenLiterals),
+		newLexerTestVerbose("multiline", `/*
+multi
+line
+comment */ 5`, tokensTypes, tokenLiterals),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runLexerTest(t, tt)
+		})
 	}
 }

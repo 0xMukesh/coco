@@ -71,7 +71,7 @@ const (
 	ILLEGAL = "ILLEGAL"
 )
 
-var keywords = map[string]TokenType{
+var PROGRAM_KEYWORDS = map[string]TokenType{
 	"let":      LET,
 	"const":    CONST,
 	"fn":       FUNCTION,
@@ -98,7 +98,7 @@ func New(tokenType TokenType, literal string, line, startColumn, endColumn int) 
 }
 
 func IdentTokenTypeLookup(ident string) TokenType {
-	if tt, ok := keywords[ident]; ok {
+	if tt, ok := PROGRAM_KEYWORDS[ident]; ok {
 		return tt
 	}
 
