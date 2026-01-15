@@ -97,6 +97,13 @@ func New(tokenType TokenType, literal string, line, startColumn, endColumn int) 
 	}
 }
 
+func NewMinimal(tokenType TokenType, literal string) Token {
+	return Token{
+		Type:    tokenType,
+		Literal: literal,
+	}
+}
+
 func IdentTokenTypeLookup(ident string) TokenType {
 	if tt, ok := PROGRAM_KEYWORDS[ident]; ok {
 		return tt

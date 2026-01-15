@@ -137,6 +137,12 @@ func (l *Lexer) readString(delim byte) (string, error) {
 		}
 
 		if l.currChar == '\\' {
+			if l.peekChar() == '\\' {
+				l.readChar()
+				out.WriteByte('\\')
+				continue
+			}
+
 			if utils.IsEscapeSequenceCode(l.peekChar()) {
 				escapeSequenceCode := l.peekChar()
 				l.readChar()

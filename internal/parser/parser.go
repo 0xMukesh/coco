@@ -10,16 +10,13 @@ import (
 )
 
 const (
-	LOWEST = iota
-	ASSIGN
-	LOGICAL
-	EQUALS
-	COMPARISON
-	SUBTRACTION
-	ADDITION
-	MULTIPLICATION
-	DIVISION
-	EXPONENTIATION
+	LOWEST         = iota
+	ASSIGN         // =
+	LOGICAL        // &&, ||
+	COMPARISON     // >, >=, <, <=, ==, !=
+	ADDITION       // +, -
+	MULTIPLICATION // *, /, %
+	EXPONENTIATION // **
 	UNARY
 	FUNCTION_CALL
 )
@@ -28,20 +25,21 @@ var precedenceTable = map[tokens.TokenType]int{
 	tokens.ASSIGN:              ASSIGN,
 	tokens.AND:                 LOGICAL,
 	tokens.OR:                  LOGICAL,
-	tokens.EQUALS:              EQUALS,
-	tokens.NOT_EQUALS:          EQUALS,
+	tokens.EQUALS:              COMPARISON,
+	tokens.NOT_EQUALS:          COMPARISON,
 	tokens.LESS_THAN:           COMPARISON,
 	tokens.GREATER_THAN:        COMPARISON,
 	tokens.LESS_THAN_EQUALS:    COMPARISON,
 	tokens.GREATER_THAN_EQUALS: COMPARISON,
-	tokens.MINUS:               SUBTRACTION,
-	tokens.MINUS_EQUAL:         SUBTRACTION,
+	tokens.MINUS:               ADDITION,
+	tokens.MINUS_EQUAL:         ADDITION,
 	tokens.PLUS:                ADDITION,
 	tokens.PLUS_EQUAL:          ADDITION,
 	tokens.STAR:                MULTIPLICATION,
 	tokens.STAR_EQUAL:          MULTIPLICATION,
-	tokens.SLASH:               DIVISION,
-	tokens.SLASH_EQUAL:         DIVISION,
+	tokens.SLASH:               MULTIPLICATION,
+	tokens.SLASH_EQUAL:         MULTIPLICATION,
+	tokens.MODULO:              MULTIPLICATION,
 	tokens.DOUBLE_STAR:         EXPONENTIATION,
 	tokens.INCREMENT:           UNARY,
 	tokens.DECREMENT:           UNARY,
@@ -90,6 +88,7 @@ func New(tks []tokens.Token) *Parser {
 	p.registerInfixFn(tokens.MINUS, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.STAR, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.SLASH, p.parseBinaryExpression)
+	p.registerInfixFn(tokens.MODULO, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.PLUS_EQUAL, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.MINUS_EQUAL, p.parseBinaryExpression)
 	p.registerInfixFn(tokens.STAR_EQUAL, p.parseBinaryExpression)
@@ -235,7 +234,7 @@ func (p *Parser) parseUnaryExpression() ast.Expression {
 	}
 	p.readToken()
 
-	expr.Expr = p.parseExpression(LOWEST)
+	expr.Expr = p.parseExpression(UNARY)
 	if expr.Expr == nil {
 		p.addError(utils.ParserExpressionExpectedErrorBuilder(unaryOperator))
 		return nil

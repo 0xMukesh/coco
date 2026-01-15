@@ -114,8 +114,10 @@ func TestLexer_StringLiterals(t *testing.T) {
 		newLexerTest("newline", `"\n"`, tokens.STRING),
 		newLexerTest("tab escape", `"hello\tworld"`, tokens.STRING),
 		newLexerTest("tab", `"\t"`, tokens.STRING),
+		newLexerTest("ignore escape sequence", `"hello\\nworld"`, tokens.STRING),
 		newLexerTest("double quotes", `"hello \"world\""`, tokens.STRING),
 		newLexerTest("with single quotes", `"hello 'world'"`, tokens.STRING),
+		newLexerTest("escaping of escape character", `"hello\\nworld"`, tokens.STRING),
 		newLexerTestFail("unterminated", `"hello`, expectIllegalToken("unterminated string")),
 		newLexerTestFail("invalid escape character", `"hello\z"`, expectIllegalToken("invalid escape character")),
 	}

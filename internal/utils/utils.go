@@ -11,7 +11,7 @@ func IsDigit(ch byte) bool {
 }
 
 func IsEscapeSequenceCode(ch byte) bool {
-	return ch == 'n' || ch == 't' || ch == '"' || ch == '\'' || ch == '\\'
+	return ch == 'n' || ch == 't' || ch == '"' || ch == '\\'
 }
 
 func NormalizeQuotedString(str string) string {
