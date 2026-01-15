@@ -95,6 +95,7 @@ func TestLexer_FloatLiterals(t *testing.T) {
 	tests := []lexerTestItem{
 		newLexerTest("simple", "123.34", tokens.FLOAT),
 		newLexerTest("no trailing digit", "123.", tokens.FLOAT),
+		newLexerTest("no leading digit", ".12", tokens.FLOAT),
 		newLexerTestFail("malformed with leading digit", "123.34.45", expectMalformedFloatLiteral()),
 	}
 

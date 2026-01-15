@@ -1,11 +1,11 @@
 package lexer
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/0xmukesh/coco/internal/tokens"
+	"github.com/0xmukesh/coco/internal/utils"
 )
 
 type validateFailureFn func(t *testing.T, input string)
@@ -93,10 +93,7 @@ func runLexerTest(t *testing.T, tt lexerTestItem) {
 
 			// if the token is string then first normalize the input and the wrap it with double quotes at the end
 			if tk.Type == tokens.STRING {
-				normalizedInput, err := strconv.Unquote(input)
-				if err == nil {
-					input = "\"" + normalizedInput + "\""
-				}
+				input = utils.NormalizeQuotedString(input)
 			}
 
 			if tk.Literal != input {

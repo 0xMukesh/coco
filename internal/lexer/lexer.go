@@ -10,12 +10,13 @@ import (
 )
 
 type Lexer struct {
-	input        string
-	currPosition int
-	nextPosition int
-	currChar     byte
-	line         int
-	column       int
+	input         string
+	currPosition  int
+	nextPosition  int
+	currChar      byte
+	prevTokenType tokens.TokenType
+	line          int
+	column        int
 }
 
 func New(input string) *Lexer {
@@ -88,13 +89,25 @@ func (l *Lexer) readIdentifier() string {
 	return l.input[startPosition : l.currPosition+1]
 }
 
-func (l *Lexer) readNumeric(skipDot bool) string {
+// reads/consumes sequence of digits
+func (l *Lexer) readDigitSequence() string {
+	startPosition := l.currPosition
+
+	for utils.IsDigit(l.peekChar()) {
+		l.readChar()
+	}
+
+	return l.input[startPosition : l.currPosition+1]
+}
+
+// reads/consumes integer and float literals
+func (l *Lexer) readNumeric(integerOnly bool) string {
 	startPosition := l.currPosition
 	decimalSeparatorSeen := false
 
 	// check if next character is numeric i.e. is a either a digit or "."
 	// if yes, then consume it
-	for utils.IsDigit(l.peekChar()) || (!skipDot && !decimalSeparatorSeen && l.peekChar() == '.') {
+	for utils.IsDigit(l.peekChar()) || (!integerOnly && !decimalSeparatorSeen && l.peekChar() == '.') {
 		if l.peekChar() == '.' {
 			decimalSeparatorSeen = true
 		}
@@ -312,6 +325,25 @@ func (l *Lexer) nextToken() tokens.Token {
 		} else {
 			tok = l.newTokenWithExplicitStartColumn(tokens.STRING, startColumn, str)
 		}
+	case '.':
+		if utils.IsDigit(l.peekChar()) {
+			// check if the previous token is either float/integer
+			// if yes, then "." after it is considered as malformed
+			if l.prevTokenType == tokens.FLOAT || l.prevTokenType == tokens.INTEGER {
+				tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+			} else {
+				startColumn := l.column + 1
+				floatStr := l.readDigitSequence() // format: <dot><digits>
+
+				if len(floatStr) > 1 {
+					tok = l.newTokenWithExplicitStartColumn(tokens.FLOAT, startColumn, floatStr)
+				} else {
+					tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+				}
+			}
+		} else {
+			tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+		}
 	case 0:
 		tok = l.newToken(tokens.EOF, "")
 	default:
@@ -335,6 +367,7 @@ func (l *Lexer) nextToken() tokens.Token {
 	}
 
 	l.readChar()
+	l.prevTokenType = tok.Type
 	return tok
 }
 
