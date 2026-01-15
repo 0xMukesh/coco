@@ -166,6 +166,14 @@ func (b astBuilder) addGroupedExpression(expr ast.Expression) astBuilder {
 	return b
 }
 
+func (b astBuilder) addIfExpression(condition ast.Expression, consquence, alternative []ast.Statement) astBuilder {
+	b.program.Statements = append(b.program.Statements, &ast.ExpressionStatement{
+		Expr: ast.NewIfExpr(condition, consquence, alternative),
+	})
+
+	return b
+}
+
 func (b astBuilder) toProgram() *ast.Program {
 	return b.program
 }
@@ -189,6 +197,15 @@ func compareStatement(t *testing.T, idx int, expected, actual ast.Statement) {
 	case *ast.ExpressionStatement:
 		act := assertType[*ast.ExpressionStatement](t, idx, actual)
 		compareExpression(t, idx, exp.Expr, act.Expr)
+	case *ast.BlockStatement:
+		act := assertType[*ast.BlockStatement](t, idx, actual)
+		if len(exp.Statements) != len(act.Statements) {
+			t.Errorf("statement #%d: num statements mismatch: expected %d, got %d", idx, len(exp.Statements), len(act.Statements))
+		}
+
+		for i, s := range exp.Statements {
+			compareStatement(t, idx, s, act.Statements[i])
+		}
 	default:
 		t.Fatalf("unknown statement type %T", expected)
 	}
@@ -242,8 +259,20 @@ func compareExpression(t *testing.T, idx int, expected, actual ast.Expression) {
 		compareExpression(t, idx, exp.Right, act.Right)
 	case *ast.GroupedExpression:
 		act := assertType[*ast.GroupedExpression](t, idx, actual)
-
 		compareExpression(t, idx, exp.Expr, act.Expr)
+	case *ast.IfExpression:
+		act := assertType[*ast.IfExpression](t, idx, actual)
+
+		compareExpression(t, idx, exp.Condition, act.Condition)
+		compareStatement(t, idx, exp.Consequence, act.Consequence)
+
+		if exp.Alternative != nil {
+			if act.Alternative == nil {
+				t.Errorf("statament #%d: if expression missing alternative", idx)
+			}
+
+			compareStatement(t, idx, exp.Alternative, act.Alternative)
+		}
 	default:
 		t.Fatalf("unknown expression type %T", expected)
 	}

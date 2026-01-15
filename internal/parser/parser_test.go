@@ -260,3 +260,47 @@ func TestParser_GroupedExpressions(t *testing.T) {
 		})
 	}
 }
+
+func TestParser_IfExpressions(t *testing.T) {
+	tests := []parserTestItem{
+		newParserTest(
+			"simple",
+			"if (x > 5) { true }",
+			newAstBuilder().addIfExpression(
+				ast.NewGroupedExpr(ast.NewBinaryExpr(tokens.NewMinimal(tokens.GREATER_THAN, ">"), ast.NewIdentifierExpr("x"), ast.NewIntegerExpr(5))),
+				ast.WrapExprsAsStmts([]ast.Expression{ast.NewBooleanExpr(true)}),
+				nil,
+			).toProgram(),
+		),
+		newParserTest(
+			"if else",
+			"if (x > 5) { true } else { false }",
+			newAstBuilder().addIfExpression(
+				ast.NewGroupedExpr(ast.NewBinaryExpr(tokens.NewMinimal(tokens.GREATER_THAN, ">"), ast.NewIdentifierExpr("x"), ast.NewIntegerExpr(5))),
+				ast.WrapExprsAsStmts([]ast.Expression{ast.NewBooleanExpr(true)}),
+				ast.WrapExprsAsStmts([]ast.Expression{ast.NewBooleanExpr(false)}),
+			).toProgram(),
+		),
+		newParserTest(
+			"nested if",
+			"if (x > 5) { if (x == 6) { 1 } else { 0 } } else { 2 }",
+			newAstBuilder().addIfExpression(
+				ast.NewGroupedExpr(ast.NewBinaryExpr(tokens.NewMinimal(tokens.GREATER_THAN, ">"), ast.NewIdentifierExpr("x"), ast.NewIntegerExpr(5))),
+				ast.WrapExprsAsStmts([]ast.Expression{
+					ast.NewIfExpr(
+						ast.NewGroupedExpr(ast.NewBinaryExpr(tokens.NewMinimal(tokens.EQUALS, "=="), ast.NewIdentifierExpr("x"), ast.NewIntegerExpr(6))),
+						ast.WrapExprsAsStmts([]ast.Expression{ast.NewIntegerExpr(1)}),
+						ast.WrapExprsAsStmts([]ast.Expression{ast.NewIntegerExpr(0)}),
+					),
+				}),
+				ast.WrapExprsAsStmts([]ast.Expression{ast.NewIntegerExpr(2)}),
+			).toProgram(),
+		),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runParserTest(t, tt)
+		})
+	}
+}

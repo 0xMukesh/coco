@@ -52,3 +52,32 @@ func NewGroupedExpr(expr Expression) Expression {
 		Expr: expr,
 	}
 }
+
+func WrapExprsAsStmts(exprs []Expression) []Statement {
+	stmts := []Statement{}
+
+	for _, e := range exprs {
+		stmts = append(stmts, &ExpressionStatement{
+			Expr: e,
+		})
+	}
+
+	return stmts
+}
+
+func NewIfExpr(condition Expression, consequence []Statement, alternative []Statement) Expression {
+	expr := &IfExpression{
+		Condition: condition,
+		Consequence: &BlockStatement{
+			Statements: consequence,
+		},
+	}
+
+	if alternative != nil {
+		expr.Alternative = &BlockStatement{
+			Statements: alternative,
+		}
+	}
+
+	return expr
+}
