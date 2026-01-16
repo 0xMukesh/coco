@@ -26,6 +26,10 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) cotypes
 	leftTypeCategory := cotypes.GetTypeCategory(leftType)
 	rightTypeCategory := cotypes.GetTypeCategory(rightType)
 
+	if leftType == nil || rightType == nil {
+		return nil
+	}
+
 	op := expr.Operator.Type
 	isComparisonOperator := op == tokens.LESS_THAN || op == tokens.GREATER_THAN || op == tokens.LESS_THAN_EQUALS || op == tokens.GREATER_THAN_EQUALS || op == tokens.EQUALS || op == tokens.NOT_EQUALS
 
@@ -85,7 +89,7 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) cotypes
 	}
 
 	tc.addError("cannot perform %s operation on %s and %s", op, leftType, rightType)
-	return leftType
+	return nil
 }
 
 func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
@@ -100,6 +104,13 @@ func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
 		t = cotypes.StringType{}
 	case *ast.BooleanExpression:
 		t = cotypes.BoolType{}
+	case *ast.IdentifierExpression:
+		identType, found := tc.env.Get(e.String())
+		if !found {
+			tc.addError("unknown identifier: %s", e.String())
+		} else {
+			t = identType
+		}
 	case *ast.BinaryExpression:
 		t = tc.checkBinaryExpression(e)
 	default:
@@ -113,7 +124,7 @@ func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
 func (tc *TypeChecker) checkExitStatement(stmt *ast.ExitStatement) {
 	exprType := tc.checkExpression(stmt.Expr)
 
-	if !exprType.Equals(cotypes.IntType{}) {
+	if exprType != nil && !exprType.Equals(cotypes.IntType{}) {
 		tc.addError("expected exit code to an integer, got %q", exprType)
 	}
 }
@@ -122,6 +133,16 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) {
 	switch s := stmt.(type) {
 	case *ast.ExpressionStatement:
 		tc.checkExpression(s.Expr)
+	case *ast.LetStatement:
+		varType := tc.checkExpression(s.Value)
+		tc.env.Set(s.Identifier.String(), varType)
+	case *ast.AssignmentStatement:
+		_, exists := tc.env.Get(s.Identifier.String())
+		if !exists {
+			tc.addError("unknown identifier: %s", s.Identifier.String())
+		}
+
+		tc.checkExpression(s.Value)
 	case *ast.ExitStatement:
 		tc.checkExitStatement(s)
 	}

@@ -10,7 +10,9 @@ import (
 )
 
 func TestTypeChecker(t *testing.T) {
-	source := `exit 1 + 1;`
+	source := `let a = 1;
+let b = 2;
+exit a + b;`
 	l := lexer.New(source)
 	tks := l.Lex()
 	p := parser.New(tks)

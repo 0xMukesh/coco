@@ -347,7 +347,6 @@ func (ce *CallExpression) SetType(t cotypes.Type) cotypes.Type {
 }
 
 // let <identifier> = <value>
-// let <identifier>
 type LetStatement struct {
 	Token      tokens.Token
 	Identifier *IdentifierExpression
@@ -368,6 +367,27 @@ func (ls *LetStatement) String() string {
 		out.WriteString(" = ")
 		out.WriteString(ls.Value.String())
 	}
+
+	return out.String()
+}
+
+// <identifier> = <value>
+type AssignmentStatement struct {
+	Token      tokens.Token
+	Identifier *IdentifierExpression
+	Value      Expression
+}
+
+func (as *AssignmentStatement) statementNode() {}
+func (as *AssignmentStatement) TokenLiteral() string {
+	return as.Token.Literal
+}
+func (as *AssignmentStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(as.Identifier.Literal)
+	out.WriteString(" = ")
+	out.WriteString(as.Value.String())
 
 	return out.String()
 }

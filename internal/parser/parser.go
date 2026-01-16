@@ -466,16 +466,46 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		Literal: p.currToken.Literal,
 	}
 
-	if p.isNextToken(tokens.ASSIGN) {
-		p.readToken()
-		assignToken := p.currToken
-		p.readToken()
+	if !p.checkAndReadToken(tokens.ASSIGN) {
+		return nil
+	}
 
-		stmt.Value = p.parseExpression(LOWEST)
-		if stmt.Value == nil {
-			p.addError(utils.ParserExpressionExpectedErrorBuilder(assignToken))
-			return nil
-		}
+	assignToken := p.currToken
+	p.readToken()
+
+	stmt.Value = p.parseExpression(LOWEST)
+	if stmt.Value == nil {
+		p.addError(utils.ParserExpressionExpectedErrorBuilder(assignToken))
+		return nil
+	}
+
+	if p.isNextToken(tokens.SEMICOLON) {
+		p.readToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseAssignmentStatement() *ast.AssignmentStatement {
+	stmt := &ast.AssignmentStatement{
+		Token: p.currToken,
+		Identifier: &ast.IdentifierExpression{
+			Token:   p.currToken,
+			Literal: p.currToken.Literal,
+		},
+	}
+
+	if !p.checkAndReadToken(tokens.ASSIGN) {
+		return nil
+	}
+
+	assignToken := p.currToken
+	p.readToken()
+
+	stmt.Value = p.parseExpression(LOWEST)
+	if stmt.Value == nil {
+		p.addError(utils.ParserExpressionExpectedErrorBuilder(assignToken))
+		return nil
 	}
 
 	if p.isNextToken(tokens.SEMICOLON) {
@@ -635,6 +665,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseBlockStatement()
 	case tokens.EXIT:
 		return p.parseExitStatement()
+	case tokens.IDENTIFIER:
+		return p.parseAssignmentStatement()
 	default:
 		return p.parseExpressionStatement()
 	}

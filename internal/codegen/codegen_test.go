@@ -13,13 +13,15 @@ import (
 
 func TestCodegen(t *testing.T) {
 	// exit <expression>
-	source := `exit 5 * 5 + 1 + 4 - 2 * 3 + 1;`
+	source := `let a = 1;
+a = 10;
+let b = 4;
+exit a + b;`
 	l := lexer.New(source)
 	tks := l.Lex()
 
 	p := parser.New(tks)
 	program := p.ParseProgram()
-
 	if p.HasErrors() {
 		for _, e := range p.Errors() {
 			fmt.Println(e)
@@ -28,12 +30,9 @@ func TestCodegen(t *testing.T) {
 		t.FailNow()
 	}
 
-	fmt.Println(program.String())
-
 	tenv := cotypes.NewTypeEnvironment()
 	tc := typechecker.New(tenv)
 	tc.Transform(program)
-
 	if tc.HasErrors() {
 		for _, e := range tc.Errors() {
 			fmt.Println(e)
@@ -44,6 +43,14 @@ func TestCodegen(t *testing.T) {
 
 	cg := New()
 	cg.Generate(program)
+	if cg.HasErrors() {
+		for _, e := range cg.Errors() {
+			fmt.Println(e)
+		}
+
+		t.FailNow()
+	}
+
 	ir := cg.EmitIR()
 
 	outFile := "../../build/test.ll"
