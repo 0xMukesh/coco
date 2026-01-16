@@ -313,10 +313,12 @@ func (fe *FunctionExpression) SetType(t cotypes.Type) cotypes.Type {
 
 // <identifier>(<arguments>)
 type CallExpression struct {
-	Token      tokens.Token
-	Identifier *IdentifierExpression
-	Arguments  []Expression
-	Type       cotypes.Type
+	Token       tokens.Token
+	Identifier  *IdentifierExpression
+	Arguments   []Expression
+	Type        cotypes.Type
+	IsBuiltin   bool
+	BuiltinKind *BuiltinsKind
 }
 
 func (ce *CallExpression) expressionNode() {}

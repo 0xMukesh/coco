@@ -44,6 +44,14 @@ func (s StringType) Equals(t Type) bool {
 	return ok
 }
 
+type VoidType struct{}
+
+func (v VoidType) String() string { return "void" }
+func (v VoidType) Equals(t Type) bool {
+	_, ok := t.(VoidType)
+	return ok
+}
+
 func GetTypeCategory(T Type) TypeCategory {
 	switch T {
 	case FloatType{}:

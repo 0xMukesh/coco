@@ -12,11 +12,7 @@ import (
 )
 
 func TestCodegen(t *testing.T) {
-	// exit <expression>
-	source := `let a = 1;
-a = 10;
-let b = 4;
-exit a + b;`
+	source := `print(45);`
 	l := lexer.New(source)
 	tks := l.Lex()
 

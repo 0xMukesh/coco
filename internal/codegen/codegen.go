@@ -1,13 +1,12 @@
 package codegen
 
 import (
-	"fmt"
-
 	"github.com/0xmukesh/coco/internal/ast"
 	"github.com/0xmukesh/coco/internal/tokens"
 	cotypes "github.com/0xmukesh/coco/internal/types"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	"github.com/llir/llvm/ir/enum"
 	"github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -18,12 +17,16 @@ type Variable struct {
 }
 
 type Codegen struct {
-	module    *ir.Module
-	fn        *ir.Func
-	builder   *ir.Block
-	ret       value.Value
-	variables map[string]*Variable
-	errors    []error
+	module         *ir.Module
+	fn             *ir.Func
+	builder        *ir.Block
+	ret            value.Value
+	variables      map[string]*Variable
+	runtimeFuncs   map[string]*ir.Func
+	stringLiterals []*ir.Global
+	stringIndices  map[string]int
+
+	errors []error
 }
 
 func New() *Codegen {
@@ -31,63 +34,18 @@ func New() *Codegen {
 	fn := module.NewFunc("main", types.I32)
 	builder := fn.NewBlock("")
 
-	return &Codegen{
-		module:    module,
-		fn:        fn,
-		builder:   builder,
-		variables: make(map[string]*Variable),
-		errors:    make([]error, 0),
-	}
-}
-
-func (cg *Codegen) addErrorAtNode(node ast.Node, msg string, args ...any) error {
-	err := &CodegenError{
-		message: fmt.Sprintf(msg, args...),
-		node:    node,
+	cg := &Codegen{
+		module:         module,
+		fn:             fn,
+		builder:        builder,
+		variables:      make(map[string]*Variable),
+		errors:         make([]error, 0),
+		runtimeFuncs:   make(map[string]*ir.Func),
+		stringLiterals: make([]*ir.Global, 0),
+		stringIndices:  make(map[string]int),
 	}
 
-	cg.errors = append(cg.errors, err)
-	return err
-}
-
-func (cg *Codegen) addError(msg string, args ...any) error {
-	err := fmt.Errorf(msg, args...)
-	cg.errors = append(cg.errors, err)
-	return err
-}
-
-func (cg *Codegen) propagateOrWrapError(err error, node ast.Node, msg string, args ...any) error {
-	if isCodegenError(err) {
-		return err
-	}
-
-	return cg.addErrorAtNode(node, msg, args...)
-}
-
-func (cg *Codegen) typeToLlvm(t cotypes.Type) (types.Type, error) {
-	switch t.(type) {
-	case cotypes.IntType:
-		return types.I64, nil
-	case cotypes.FloatType:
-		return types.Double, nil
-	case cotypes.BoolType:
-		return types.I1, nil
-	default:
-		return nil, cg.addError("unsupported type - %v", t)
-	}
-}
-
-func (cg *Codegen) llvmToType(t types.Type) (cotypes.Type, error) {
-	switch t {
-	case types.I64:
-		return cotypes.IntType{}, nil
-	case types.Double:
-		return cotypes.FloatType{}, nil
-	case types.I1:
-		return cotypes.BoolType{}, nil
-	default:
-		return nil, cg.addError("unsupported LLVM type - %T", t)
-	}
+	return cg
 }
 
 func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.Value, error) {
@@ -132,10 +90,71 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 func (cg *Codegen) generateIdentifier(expr *ast.IdentifierExpression) (value.Value, error) {
 	variable, exists := cg.variables[expr.Literal]
 	if !exists {
-		return nil, cg.addErrorAtNode(expr, "undefined variable '%s'", expr.Literal)
+		return nil, cg.addErrorAtNode(expr, "undefined variable %q", expr.Literal)
 	}
 
 	return cg.builder.NewLoad(variable.alloca.ElemType, variable.alloca), nil
+}
+
+func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value, error) {
+	// TODO: only builtin functions (just print) are supported
+	if !expr.IsBuiltin {
+		return nil, cg.addErrorAtNode(expr, "cannot call %q identifier", expr.Identifier.String())
+	}
+
+	if expr.IsBuiltin && expr.BuiltinKind == nil {
+		return nil, cg.addErrorAtNode(expr, "function %q is marked as builtin but missing builtin kind", expr.Identifier.String())
+	}
+
+	switch *expr.BuiltinKind {
+	case ast.BuiltinFuncPrint:
+		return cg.generatePrintExpression(expr)
+	default:
+		return nil, cg.addErrorAtNode(expr, "unsupported builtin function %q", expr.Identifier.String())
+	}
+}
+
+func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Value, error) {
+	funcName := expr.Identifier.String()
+	printFunc, exists := cg.runtimeFuncs[funcName]
+	if !exists {
+		printFunc = cg.module.NewFunc("printf", types.I32, ir.NewParam("format", types.NewPointer(types.I8)))
+		printFunc.Sig.Variadic = true
+		cg.setRuntimeFunc(funcName, printFunc)
+	}
+
+	// TODO: only integers are supported by print function
+	for _, arg := range expr.Arguments {
+		formatStrValue := ""
+		var toPrintValue value.Value = nil
+
+		switch a := arg.(type) {
+		case *ast.IntegerExpression:
+			formatStrValue = "%d"
+			toPrintValue = constant.NewInt(types.I64, a.Value)
+		}
+
+		if len(formatStrValue) == 0 || toPrintValue == nil {
+			return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
+		}
+
+		formatStrValue += "\n\x00"
+		formatStrGlobalDef := cg.getGlobalStringLiteralDef(formatStrValue)
+		formatStrGlobalDef.Immutable = true
+		formatStrGlobalDef.Linkage = enum.LinkagePrivate
+		formatStrGlobalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
+
+		formatStrPtr := constant.NewGetElementPtr(
+			types.NewArray(uint64(len(formatStrValue)), types.I8),
+			formatStrGlobalDef,
+			constant.NewInt(types.I64, 0),
+			constant.NewInt(types.I64, 0),
+		)
+
+		cg.builder.NewCall(printFunc, formatStrPtr, toPrintValue)
+	}
+
+	return nil, nil
 }
 
 func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) {
@@ -152,19 +171,26 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 		return cg.generateIdentifier(e)
 	case *ast.BinaryExpression:
 		return cg.generateBinaryExpression(e)
+	case *ast.CallExpression:
+		return cg.generateCallExpression(e)
 	default:
 		return nil, cg.addErrorAtNode(expr, "unsupported expression type")
 	}
 }
 
 func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
+	varName := stmt.Identifier.String()
+	_, exists := cg.variables[varName]
+	if exists {
+		return cg.addErrorAtNode(stmt, "cannot redeclare %q variable", varName)
+	}
+
 	initValue, err := cg.generateExpression(stmt.Value)
 	if err != nil {
 		return cg.propagateOrWrapError(err, stmt, "failed to generate let statement value: %s", err.Error())
 	}
 
 	varType := stmt.Value.GetType()
-	varName := stmt.Identifier.String()
 	llvmType, err := cg.typeToLlvm(varType)
 	if err != nil {
 		return cg.propagateOrWrapError(err, stmt, "failed to retrieve llvm equivalent type: %s", err.Error())

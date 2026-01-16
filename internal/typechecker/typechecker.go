@@ -9,15 +9,21 @@ import (
 )
 
 type TypeChecker struct {
-	env    *cotypes.TypeEnvironment
-	errors []string
+	env      *cotypes.TypeEnvironment
+	builtins map[string]*builtinsInfo
+	errors   []string
 }
 
 func New(env *cotypes.TypeEnvironment) *TypeChecker {
-	return &TypeChecker{
-		env:    env,
-		errors: []string{},
+	tc := &TypeChecker{
+		env:      env,
+		errors:   []string{},
+		builtins: make(map[string]*builtinsInfo),
 	}
+
+	tc.registerBuiltins()
+
+	return tc
 }
 
 func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) cotypes.Type {
@@ -92,6 +98,33 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) cotypes
 	return nil
 }
 
+func (tc *TypeChecker) checkCallExpression(expr *ast.CallExpression) cotypes.Type {
+	if builtin, isBuiltin := tc.builtins[expr.Identifier.String()]; isBuiltin {
+		expr.IsBuiltin = true
+		expr.BuiltinKind = &builtin.kind
+		return builtin.checker(expr)
+	}
+
+	// TODO: only builtin functions (just print) can be called
+	tc.addError("cannot call %s identifier", expr.Identifier.String())
+	return nil
+}
+
+func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) cotypes.Type {
+	for i, arg := range expr.Arguments {
+		argType := tc.checkExpression(arg)
+		arg.SetType(argType)
+
+		// TODO: only integers are supported for printing
+		if !argType.Equals(cotypes.IntType{}) {
+			tc.addError("invalid argument at %d idx to print", i)
+			return nil
+		}
+	}
+
+	return cotypes.VoidType{}
+}
+
 func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
 	var t cotypes.Type = nil
 
@@ -113,6 +146,8 @@ func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
 		}
 	case *ast.BinaryExpression:
 		t = tc.checkBinaryExpression(e)
+	case *ast.CallExpression:
+		t = tc.checkCallExpression(e)
 	default:
 		tc.addError("unknown expression of type %T", expr)
 	}

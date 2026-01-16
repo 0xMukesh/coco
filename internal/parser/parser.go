@@ -666,7 +666,11 @@ func (p *Parser) parseStatement() ast.Statement {
 	case tokens.EXIT:
 		return p.parseExitStatement()
 	case tokens.IDENTIFIER:
-		return p.parseAssignmentStatement()
+		if p.isNextToken(tokens.ASSIGN) {
+			return p.parseAssignmentStatement()
+		}
+
+		return p.parseExpressionStatement()
 	default:
 		return p.parseExpressionStatement()
 	}

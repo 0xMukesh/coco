@@ -2,6 +2,12 @@ package ast
 
 import "github.com/0xmukesh/coco/internal/tokens"
 
+type BuiltinsKind int
+
+const (
+	BuiltinFuncPrint BuiltinsKind = iota
+)
+
 func NewIntegerExpr(value int64) Expression {
 	return &IntegerExpression{
 		Value: value,
