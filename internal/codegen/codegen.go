@@ -123,15 +123,12 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 		cg.setRuntimeFunc(funcName, printFunc)
 	}
 
-	// TODO: only integers are supported by print function
+	// TODO: only integers and floats are supported by print function
 	for _, arg := range expr.Arguments {
-		formatStrValue := ""
-		var toPrintValue value.Value = nil
-
-		switch a := arg.(type) {
-		case *ast.IntegerExpression:
-			formatStrValue = "%d"
-			toPrintValue = constant.NewInt(types.I64, a.Value)
+		formatStrValue := cg.getPrintFormatSpecifier(arg.GetType())
+		toPrintValue, err := cg.generateExpression(arg)
+		if err != nil {
+			return nil, cg.propagateOrWrapError(err, expr, "unsupported argument type for print expression - %T", arg.GetType())
 		}
 
 		if len(formatStrValue) == 0 || toPrintValue == nil {
@@ -173,6 +170,8 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 		return cg.generateBinaryExpression(e)
 	case *ast.CallExpression:
 		return cg.generateCallExpression(e)
+	case *ast.GroupedExpression:
+		return cg.generateExpression(e.Expr)
 	default:
 		return nil, cg.addErrorAtNode(expr, "unsupported expression type")
 	}

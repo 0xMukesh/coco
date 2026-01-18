@@ -113,10 +113,14 @@ func (tc *TypeChecker) checkCallExpression(expr *ast.CallExpression) cotypes.Typ
 func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) cotypes.Type {
 	for i, arg := range expr.Arguments {
 		argType := tc.checkExpression(arg)
+		if argType == nil {
+			return nil
+		}
+
 		arg.SetType(argType)
 
 		// TODO: only integers are supported for printing
-		if !argType.Equals(cotypes.IntType{}) {
+		if !argType.Equals(cotypes.IntType{}) && !argType.Equals(cotypes.FloatType{}) {
 			tc.addError("invalid argument at %d idx to print", i)
 			return nil
 		}

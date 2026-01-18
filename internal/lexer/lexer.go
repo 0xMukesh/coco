@@ -3,6 +3,7 @@ package lexer
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/tokens"
@@ -336,7 +337,7 @@ func (l *Lexer) nextToken() tokens.Token {
 			// check if the previous token is either float/integer
 			// if yes, then "." after it is considered as malformed
 			if l.prevTokenType == tokens.FLOAT || l.prevTokenType == tokens.INTEGER {
-				tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+				tok = l.newToken(tokens.ILLEGAL, "malformed numeric")
 			} else {
 				startColumn := l.column + 1
 				floatStr := l.readDigitSequence() // format: <dot><digits>
@@ -344,11 +345,11 @@ func (l *Lexer) nextToken() tokens.Token {
 				if len(floatStr) > 1 {
 					tok = l.newTokenWithExplicitStartColumn(tokens.FLOAT, startColumn, floatStr)
 				} else {
-					tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+					tok = l.newToken(tokens.ILLEGAL, fmt.Sprintf("illegal character - %s", string(l.currChar)))
 				}
 			}
 		} else {
-			tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+			tok = l.newToken(tokens.ILLEGAL, fmt.Sprintf("illegal character - %s", string(l.currChar)))
 		}
 	case 0:
 		tok = l.newToken(tokens.EOF, "")
@@ -368,7 +369,7 @@ func (l *Lexer) nextToken() tokens.Token {
 				tok = l.newTokenWithExplicitStartColumn(tokens.INTEGER, startColumn, numeric)
 			}
 		} else {
-			tok = l.newToken(tokens.ILLEGAL, string(l.currChar))
+			tok = l.newToken(tokens.ILLEGAL, fmt.Sprintf("illegal character - %s", string(l.currChar)))
 		}
 	}
 

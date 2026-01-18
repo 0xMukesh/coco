@@ -22,6 +22,17 @@ func (cg *Codegen) typeToLlvm(t cotypes.Type) (types.Type, error) {
 	}
 }
 
+func (cg *Codegen) getPrintFormatSpecifier(t cotypes.Type) string {
+	switch t.(type) {
+	case cotypes.IntType:
+		return "%d"
+	case cotypes.FloatType:
+		return "%f"
+	default:
+		return ""
+	}
+}
+
 func (cg *Codegen) setRuntimeFunc(name string, llvmFunc *ir.Func) {
 	cg.runtimeFuncs[name] = llvmFunc
 }

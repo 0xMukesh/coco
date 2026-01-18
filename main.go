@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/0xmukesh/coco/cli"
 
 func main() {
-	fmt.Println(len("%d\n\x00"))
+	cli.Run()
 }
