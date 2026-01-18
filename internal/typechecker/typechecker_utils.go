@@ -17,4 +17,9 @@ func (tc *TypeChecker) registerBuiltins() {
 		kind:    ast.BuiltinFuncPrint,
 		checker: tc.checkPrintBuiltin,
 	}
+	tc.builtins["exit"] = &builtinsInfo{
+		name:    "exit",
+		kind:    ast.BuiltinFuncExit,
+		checker: tc.checkExitBuiltin,
+	}
 }

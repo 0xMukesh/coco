@@ -1,6 +1,7 @@
 package driver
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"os"
@@ -18,12 +19,13 @@ import (
 )
 
 type Driver struct {
-	Source *Source
+	source       *Source
+	runtimeCache *RuntimeCache
 }
 
 func NewDriver(src *Source) *Driver {
 	return &Driver{
-		Source: src,
+		source: src,
 	}
 }
 
@@ -33,13 +35,19 @@ func NewDriverFromFile(file string) (*Driver, error) {
 		return nil, err
 	}
 
+	rc, err := NewRuntimeCache()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Driver{
-		Source: src,
+		source:       src,
+		runtimeCache: rc,
 	}, nil
 }
 
 func (d *Driver) Lex() ([]tokens.Token, error) {
-	l := lexer.New(string(d.Source.Code))
+	l := lexer.New(string(d.source.Code))
 	tks := l.Lex()
 
 	for _, t := range tks {
@@ -83,10 +91,14 @@ func (d *Driver) Codegen(program *ast.Program) (string, error) {
 	return ir, nil
 }
 
-func (d *Driver) IrFileToBinary(irFilePath string, outFilePath string) error {
+func (d *Driver) IrFileToBinary(irFilePath string, outFilePath string, deleteIrAtEnd bool) error {
 	irFilePath, err := filepath.Abs(irFilePath)
 	if err != nil {
 		return err
+	}
+
+	if deleteIrAtEnd {
+		defer os.Remove(irFilePath)
 	}
 
 	if filepath.Ext(irFilePath) != ".ll" {
@@ -97,14 +109,23 @@ func (d *Driver) IrFileToBinary(irFilePath string, outFilePath string) error {
 		outFilePath = strings.Replace(irFilePath, ".ll", "", 1)
 	}
 
-	if err := exec.Command("clang", irFilePath, "-o", outFilePath).Run(); err != nil {
+	cmd := exec.Command("clang", irFilePath, d.runtimeCache.objPath, "-o", outFilePath)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 
-	return os.Remove(irFilePath)
+	return nil
 }
 
-func (d *Driver) Pipeline(outFilePath string) error {
+func (d *Driver) Pipeline(outFilePath string, emitIr bool) error {
+	outFilePath, err := filepath.Abs(outFilePath)
+	if err != nil {
+		return err
+	}
+
 	tks, err := d.Lex()
 	if err != nil {
 		return err
@@ -125,17 +146,21 @@ func (d *Driver) Pipeline(outFilePath string) error {
 	}
 
 	var irFilePath string
-	if d.Source.Name == "<dummy>" {
-		irFilePath = "tmp.ll"
+	if outFilePath == "" {
+		irFilePath = filepath.Join(os.TempDir(), "tmp.ll")
 	} else {
-		irFilePath = strings.Replace(d.Source.Name, ".coco", ".ll", 1)
+		if strings.Contains(outFilePath, ".") {
+			irFilePath = strings.Split(outFilePath, ".")[0] + ".ll"
+		} else {
+			irFilePath = outFilePath + ".ll"
+		}
 	}
 
 	if err := os.WriteFile(irFilePath, []byte(ir), 0777); err != nil {
 		return err
 	}
 
-	if err := d.IrFileToBinary(irFilePath, outFilePath); err != nil {
+	if err := d.IrFileToBinary(irFilePath, outFilePath, !emitIr); err != nil {
 		return err
 	}
 

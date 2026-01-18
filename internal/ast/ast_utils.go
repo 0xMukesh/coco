@@ -6,6 +6,7 @@ type BuiltinsKind int
 
 const (
 	BuiltinFuncPrint BuiltinsKind = iota
+	BuiltinFuncExit
 )
 
 func NewIntegerExpr(value int64) Expression {

@@ -59,32 +59,79 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		return nil, cg.propagateOrWrapError(err, expr, "failed to generate right operand: %s", err.Error())
 	}
 
-	isFloat := expr.GetType().Equals(cotypes.FloatType{})
-
-	switch expr.Operator.Type {
-	case tokens.PLUS:
-		if isFloat {
-			return cg.builder.NewFAdd(left, right), nil
+	// integer arithmetic
+	if expr.GetType().Equals(cotypes.IntType{}) {
+		switch expr.Operator.Type {
+		case tokens.PLUS:
+			return cg.builder.NewAdd(left, right), nil
+		case tokens.MINUS:
+			return cg.builder.NewSub(left, right), nil
+		case tokens.STAR:
+			return cg.builder.NewMul(left, right), nil
+		case tokens.SLASH:
+			return cg.builder.NewSDiv(left, right), nil
+		default:
+			return nil, cg.addErrorAtNode(expr, "cannot perform %s operation", expr.Operator.Type)
 		}
-		return cg.builder.NewAdd(left, right), nil
-	case tokens.MINUS:
-		if isFloat {
-			return cg.builder.NewFSub(left, right), nil
-		}
-		return cg.builder.NewSub(left, right), nil
-	case tokens.STAR:
-		if isFloat {
-			return cg.builder.NewFMul(left, right), nil
-		}
-		return cg.builder.NewMul(left, right), nil
-	case tokens.SLASH:
-		if isFloat {
-			return cg.builder.NewFDiv(left, right), nil
-		}
-		return cg.builder.NewSDiv(left, right), nil
-	default:
-		return nil, cg.addErrorAtNode(expr, "unknown binary operator: %s", expr.Operator.Type)
 	}
+
+	// float arithmetic
+	if expr.GetType().Equals(cotypes.FloatType{}) {
+		switch expr.Operator.Type {
+		case tokens.PLUS:
+			return cg.builder.NewFAdd(left, right), nil
+		case tokens.MINUS:
+			return cg.builder.NewFSub(left, right), nil
+		case tokens.STAR:
+			return cg.builder.NewMul(left, right), nil
+		case tokens.SLASH:
+			return cg.builder.NewFDiv(left, right), nil
+		default:
+			return nil, cg.addErrorAtNode(expr, "cannot perform %s operation", expr.Operator.Type)
+		}
+	}
+
+	// integer comparison
+	if left.Type().Equal(types.I64) && right.Type().Equal(types.I64) && expr.GetType().Equals(cotypes.BoolType{}) {
+		switch expr.Operator.Type {
+		case tokens.LESS_THAN:
+			return cg.builder.NewICmp(enum.IPredSLT, left, right), nil
+		case tokens.GREATER_THAN:
+			return cg.builder.NewICmp(enum.IPredSGT, left, right), nil
+		case tokens.LESS_THAN_EQUALS:
+			return cg.builder.NewICmp(enum.IPredSLE, left, right), nil
+		case tokens.GREATER_THAN_EQUALS:
+			return cg.builder.NewICmp(enum.IPredSGE, left, right), nil
+		case tokens.EQUALS:
+			return cg.builder.NewICmp(enum.IPredEQ, left, right), nil
+		case tokens.NOT_EQUALS:
+			return cg.builder.NewICmp(enum.IPredNE, left, right), nil
+		default:
+			return nil, cg.addErrorAtNode(expr, "cannot perform %s operation", expr.Operator.Type)
+		}
+	}
+
+	// float comparison
+	if left.Type().Equal(types.Double) && right.Type().Equal(types.Double) && expr.GetType().Equals(cotypes.FloatType{}) {
+		switch expr.Operator.Type {
+		case tokens.LESS_THAN:
+			return cg.builder.NewFCmp(enum.FPredOLT, left, right), nil
+		case tokens.GREATER_THAN:
+			return cg.builder.NewFCmp(enum.FPredOGT, left, right), nil
+		case tokens.LESS_THAN_EQUALS:
+			return cg.builder.NewFCmp(enum.FPredOLE, left, right), nil
+		case tokens.GREATER_THAN_EQUALS:
+			return cg.builder.NewFCmp(enum.FPredOGE, left, right), nil
+		case tokens.EQUALS:
+			return cg.builder.NewFCmp(enum.FPredOEQ, left, right), nil
+		case tokens.NOT_EQUALS:
+			return cg.builder.NewFCmp(enum.FPredONE, left, right), nil
+		default:
+			return nil, cg.addErrorAtNode(expr, "cannot perform %s operation", expr.Operator.Type)
+		}
+	}
+
+	return nil, cg.addErrorAtNode(expr, "cannot perform %s operation", expr.Operator.Type)
 }
 
 func (cg *Codegen) generateIdentifier(expr *ast.IdentifierExpression) (value.Value, error) {
@@ -109,46 +156,70 @@ func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value
 	switch *expr.BuiltinKind {
 	case ast.BuiltinFuncPrint:
 		return cg.generatePrintExpression(expr)
+	case ast.BuiltinFuncExit:
+		return cg.generateExitExpression(expr)
 	default:
 		return nil, cg.addErrorAtNode(expr, "unsupported builtin function %q", expr.Identifier.String())
 	}
 }
 
 func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Value, error) {
-	funcName := expr.Identifier.String()
-	printFunc, exists := cg.runtimeFuncs[funcName]
-	if !exists {
-		printFunc = cg.module.NewFunc("printf", types.I32, ir.NewParam("format", types.NewPointer(types.I8)))
-		printFunc.Sig.Variadic = true
-		cg.setRuntimeFunc(funcName, printFunc)
-	}
-
-	// TODO: only integers and floats are supported by print function
 	for _, arg := range expr.Arguments {
-		formatStrValue := cg.getPrintFormatSpecifier(arg.GetType())
-		toPrintValue, err := cg.generateExpression(arg)
-		if err != nil {
-			return nil, cg.propagateOrWrapError(err, expr, "unsupported argument type for print expression - %T", arg.GetType())
-		}
-
-		if len(formatStrValue) == 0 || toPrintValue == nil {
+		printFuncName := cg.getRuntimePrintFuncByType(arg.GetType())
+		if printFuncName == "" {
 			return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
 		}
 
-		formatStrValue += "\n\x00"
-		formatStrGlobalDef := cg.getGlobalStringLiteralDef(formatStrValue)
-		formatStrGlobalDef.Immutable = true
-		formatStrGlobalDef.Linkage = enum.LinkagePrivate
-		formatStrGlobalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
+		printFunc, exists := cg.runtimeFuncs[printFuncName]
+		if !exists {
+			var param *ir.Param
 
-		formatStrPtr := constant.NewGetElementPtr(
-			types.NewArray(uint64(len(formatStrValue)), types.I8),
-			formatStrGlobalDef,
-			constant.NewInt(types.I64, 0),
-			constant.NewInt(types.I64, 0),
-		)
+			switch arg.GetType().(type) {
+			case cotypes.IntType:
+				param = ir.NewParam("value", types.I64)
+			case cotypes.FloatType:
+				param = ir.NewParam("value", types.Double)
+			case cotypes.BoolType:
+				param = ir.NewParam("value", types.I1)
+			}
 
-		cg.builder.NewCall(printFunc, formatStrPtr, toPrintValue)
+			if param == nil {
+				return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
+			}
+
+			printFunc = cg.module.NewFunc(printFuncName, types.Void, param)
+			cg.setRuntimeFunc(printFuncName, printFunc)
+		}
+
+		if printFunc == nil {
+			return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
+		}
+
+		toPrintValue, err := cg.generateExpression(arg)
+		if err != nil {
+			return nil, cg.propagateOrWrapError(err, expr, "failed to generate print statement value - %T", arg.GetType())
+		}
+
+		if arg.GetType().Equals(cotypes.BoolType{}) {
+			toPrintValue = cg.builder.NewZExt(toPrintValue, types.I64)
+		}
+
+		cg.builder.NewCall(printFunc, toPrintValue)
+	}
+
+	return nil, nil
+}
+
+func (cg *Codegen) generateExitExpression(expr *ast.CallExpression) (value.Value, error) {
+	exitVal, err := cg.generateExpression(expr.Arguments[0])
+	if err != nil {
+		return nil, cg.propagateOrWrapError(err, expr, "failed to generate exit statement value: %s", err.Error())
+	}
+
+	if exitVal.Type() == types.I64 {
+		cg.ret = cg.builder.NewTrunc(exitVal, types.I32)
+	} else {
+		cg.ret = exitVal
 	}
 
 	return nil, nil
@@ -164,6 +235,8 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 		return constant.NewInt(types.I64, e.Value), nil
 	case *ast.FloatExpression:
 		return constant.NewFloat(types.Double, e.Value), nil
+	case *ast.BooleanExpression:
+		return constant.NewBool(e.Value), nil
 	case *ast.IdentifierExpression:
 		return cg.generateIdentifier(e)
 	case *ast.BinaryExpression:
@@ -228,21 +301,6 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 	return nil
 }
 
-func (cg *Codegen) generateExitStatement(stmt *ast.ExitStatement) error {
-	exitVal, err := cg.generateExpression(stmt.Expr)
-	if err != nil {
-		return cg.propagateOrWrapError(err, stmt, "failed to generate exit value: %s", err.Error())
-	}
-
-	if exitVal.Type() == types.I64 {
-		cg.ret = cg.builder.NewTrunc(exitVal, types.I32)
-	} else {
-		cg.ret = exitVal
-	}
-
-	return nil
-}
-
 func (cg *Codegen) generateStatement(stmt ast.Statement) error {
 	switch s := stmt.(type) {
 	case *ast.ExpressionStatement:
@@ -254,8 +312,6 @@ func (cg *Codegen) generateStatement(stmt ast.Statement) error {
 		return cg.generateLetStatement(s)
 	case *ast.AssignmentStatement:
 		return cg.generateAssignmentStatement(s)
-	case *ast.ExitStatement:
-		return cg.generateExitStatement(s)
 	}
 
 	return nil

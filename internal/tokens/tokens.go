@@ -84,7 +84,6 @@ var PROGRAM_KEYWORDS = map[string]TokenType{
 	"while":    WHILE,
 	"break":    BREAK,
 	"continue": CONTINUE,
-	"exit":     EXIT,
 }
 
 func New(tokenType TokenType, literal string, line, startColumn, endColumn int) Token {

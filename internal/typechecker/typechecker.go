@@ -120,10 +120,26 @@ func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) cotypes.Type 
 		arg.SetType(argType)
 
 		// TODO: only integers are supported for printing
-		if !argType.Equals(cotypes.IntType{}) && !argType.Equals(cotypes.FloatType{}) {
+		if !argType.Equals(cotypes.IntType{}) && !argType.Equals(cotypes.FloatType{}) && !argType.Equals(cotypes.BoolType{}) {
 			tc.addError("invalid argument at %d idx to print", i)
 			return nil
 		}
+	}
+
+	return cotypes.VoidType{}
+}
+
+func (tc *TypeChecker) checkExitBuiltin(expr *ast.CallExpression) cotypes.Type {
+	if len(expr.Arguments) != 1 {
+		tc.addError("too many arguments. expected one argument")
+		return nil
+	}
+
+	exitCode := tc.checkExpression(expr.Arguments[0])
+
+	if !exitCode.Equals(cotypes.IntType{}) {
+		tc.addError("expected exit code to be of type int, got %s", exitCode.String())
+		return nil
 	}
 
 	return cotypes.VoidType{}
@@ -160,14 +176,6 @@ func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {
 	return t
 }
 
-func (tc *TypeChecker) checkExitStatement(stmt *ast.ExitStatement) {
-	exprType := tc.checkExpression(stmt.Expr)
-
-	if exprType != nil && !exprType.Equals(cotypes.IntType{}) {
-		tc.addError("expected exit code to an integer, got %q", exprType)
-	}
-}
-
 func (tc *TypeChecker) checkStatement(stmt ast.Statement) {
 	switch s := stmt.(type) {
 	case *ast.ExpressionStatement:
@@ -182,8 +190,6 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) {
 		}
 
 		tc.checkExpression(s.Value)
-	case *ast.ExitStatement:
-		tc.checkExitStatement(s)
 	}
 }
 

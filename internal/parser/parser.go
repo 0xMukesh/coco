@@ -624,20 +624,6 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	return block
 }
 
-func (p *Parser) parseExitStatement() *ast.ExitStatement {
-	stmt := &ast.ExitStatement{
-		Token: p.currToken,
-	}
-	p.readToken()
-	stmt.Expr = p.parseExpression(LOWEST)
-
-	if p.isNextToken(tokens.SEMICOLON) {
-		p.readToken()
-	}
-
-	return stmt
-}
-
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt := &ast.ExpressionStatement{
 		Token: p.currToken,
@@ -663,8 +649,6 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case tokens.LBRACE:
 		return p.parseBlockStatement()
-	case tokens.EXIT:
-		return p.parseExitStatement()
 	case tokens.IDENTIFIER:
 		if p.isNextToken(tokens.ASSIGN) {
 			return p.parseAssignmentStatement()

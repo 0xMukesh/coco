@@ -1,11 +1,8 @@
 package codegen
 
 import (
-	"fmt"
-
 	cotypes "github.com/0xmukesh/coco/internal/types"
 	"github.com/llir/llvm/ir"
-	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 )
 
@@ -22,12 +19,14 @@ func (cg *Codegen) typeToLlvm(t cotypes.Type) (types.Type, error) {
 	}
 }
 
-func (cg *Codegen) getPrintFormatSpecifier(t cotypes.Type) string {
+func (cg *Codegen) getRuntimePrintFuncByType(t cotypes.Type) string {
 	switch t.(type) {
 	case cotypes.IntType:
-		return "%d"
+		return "__coco_print_int"
 	case cotypes.FloatType:
-		return "%f"
+		return "__coco_print_float"
+	case cotypes.BoolType:
+		return "__coco_print_bool"
 	default:
 		return ""
 	}
@@ -35,18 +34,4 @@ func (cg *Codegen) getPrintFormatSpecifier(t cotypes.Type) string {
 
 func (cg *Codegen) setRuntimeFunc(name string, llvmFunc *ir.Func) {
 	cg.runtimeFuncs[name] = llvmFunc
-}
-
-func (cg *Codegen) getGlobalStringLiteralDef(literal string) *ir.Global {
-	if idx, exists := cg.stringIndices[literal]; exists {
-		return cg.stringLiterals[idx]
-	}
-
-	name := fmt.Sprintf(".str.%d", len(cg.stringLiterals))
-	globalDef := cg.module.NewGlobalDef(name, constant.NewCharArrayFromString(literal))
-
-	cg.stringIndices[literal] = len(cg.stringLiterals)
-	cg.stringLiterals = append(cg.stringLiterals, globalDef)
-
-	return globalDef
 }

@@ -506,24 +506,6 @@ func (bs *BlockStatement) String() string {
 	return out.String()
 }
 
-type ExitStatement struct {
-	Token tokens.Token
-	Expr  Expression
-}
-
-func (es *ExitStatement) statementNode() {}
-func (es *ExitStatement) TokenLiteral() string {
-	return es.Token.Literal
-}
-func (es *ExitStatement) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(es.TokenLiteral() + " ")
-	out.WriteString(es.Expr.String())
-
-	return out.String()
-}
-
 // wrapper statement type for expression, so that expressions can be executed directly via REPL
 type ExpressionStatement struct {
 	Token tokens.Token

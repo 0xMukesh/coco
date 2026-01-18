@@ -13,9 +13,9 @@ import (
 
 func TestCodegen(t *testing.T) {
 	source := `let a = 1;
-let b = a + 10;
-a = 12;
-print(a, b)`
+let b = 2;
+let c = a >= b;
+print(a, b, c)`
 	l := lexer.New(source)
 	tks := l.Lex()
 

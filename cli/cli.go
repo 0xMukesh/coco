@@ -11,6 +11,7 @@ import (
 
 var (
 	outputFilePath string
+	emitIr         bool
 )
 
 var rootCmd = &cobra.Command{
@@ -45,6 +46,7 @@ func Run() {
 
 func init() {
 	buildCmd.Flags().StringVarP(&outputFilePath, "output", "o", "", "path where the executable binary needs to be saved")
+	buildCmd.Flags().BoolVarP(&emitIr, "emit-ir", "", false, "whether to emit llvm ir or not")
 	rootCmd.AddCommand(buildCmd, typeCheckCmd)
 }
 
@@ -55,7 +57,7 @@ func buildSource(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	if err := d.Pipeline(outputFilePath); err != nil {
+	if err := d.Pipeline(outputFilePath, emitIr); err != nil {
 		log.Fatal(err)
 	}
 }
