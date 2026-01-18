@@ -105,7 +105,6 @@ func (tc *TypeChecker) checkCallExpression(expr *ast.CallExpression) cotypes.Typ
 		return builtin.checker(expr)
 	}
 
-	// TODO: only builtin functions (just print) can be called
 	tc.addError("cannot call %s identifier", expr.Identifier.String())
 	return nil
 }
@@ -119,7 +118,6 @@ func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) cotypes.Type 
 
 		arg.SetType(argType)
 
-		// TODO: only integers are supported for printing
 		if !argType.Equals(cotypes.IntType{}) && !argType.Equals(cotypes.FloatType{}) && !argType.Equals(cotypes.BoolType{}) {
 			tc.addError("invalid argument at %d idx to print", i)
 			return nil
@@ -143,6 +141,38 @@ func (tc *TypeChecker) checkExitBuiltin(expr *ast.CallExpression) cotypes.Type {
 	}
 
 	return cotypes.VoidType{}
+}
+
+func (tc *TypeChecker) checkIntBuiltin(expr *ast.CallExpression) cotypes.Type {
+	if len(expr.Arguments) != 1 {
+		tc.addError("too many arguments. expected one argument")
+		return nil
+	}
+
+	valType := tc.checkExpression(expr.Arguments[0])
+
+	if cotypes.GetTypeCategory(valType) != cotypes.CategoryNumeric {
+		tc.addError("cannot convert %s to int", valType)
+		return nil
+	}
+
+	return cotypes.IntType{}
+}
+
+func (tc *TypeChecker) checkFloatBuiltin(expr *ast.CallExpression) cotypes.Type {
+	if len(expr.Arguments) != 1 {
+		tc.addError("too many arguments. expected one argument")
+		return nil
+	}
+
+	valType := tc.checkExpression(expr.Arguments[0])
+
+	if cotypes.GetTypeCategory(valType) != cotypes.CategoryNumeric {
+		tc.addError("cannot convert %s to float", valType)
+		return nil
+	}
+
+	return cotypes.FloatType{}
 }
 
 func (tc *TypeChecker) checkExpression(expr ast.Expression) cotypes.Type {

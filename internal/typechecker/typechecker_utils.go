@@ -22,4 +22,14 @@ func (tc *TypeChecker) registerBuiltins() {
 		kind:    ast.BuiltinFuncExit,
 		checker: tc.checkExitBuiltin,
 	}
+	tc.builtins["int"] = &builtinsInfo{
+		name:    "int",
+		kind:    ast.BuiltinFuncInt,
+		checker: tc.checkIntBuiltin,
+	}
+	tc.builtins["float"] = &builtinsInfo{
+		name:    "float",
+		kind:    ast.BuiltinFuncFloat,
+		checker: tc.checkFloatBuiltin,
+	}
 }

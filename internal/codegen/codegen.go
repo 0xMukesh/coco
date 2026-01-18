@@ -17,14 +17,12 @@ type Variable struct {
 }
 
 type Codegen struct {
-	module         *ir.Module
-	fn             *ir.Func
-	builder        *ir.Block
-	ret            value.Value
-	variables      map[string]*Variable
-	runtimeFuncs   map[string]*ir.Func
-	stringLiterals []*ir.Global
-	stringIndices  map[string]int
+	module       *ir.Module
+	fn           *ir.Func
+	builder      *ir.Block
+	ret          value.Value
+	variables    map[string]*Variable
+	runtimeFuncs map[string]*ir.Func
 
 	errors []error
 }
@@ -35,14 +33,12 @@ func New() *Codegen {
 	builder := fn.NewBlock("")
 
 	cg := &Codegen{
-		module:         module,
-		fn:             fn,
-		builder:        builder,
-		variables:      make(map[string]*Variable),
-		errors:         make([]error, 0),
-		runtimeFuncs:   make(map[string]*ir.Func),
-		stringLiterals: make([]*ir.Global, 0),
-		stringIndices:  make(map[string]int),
+		module:       module,
+		fn:           fn,
+		builder:      builder,
+		variables:    make(map[string]*Variable),
+		errors:       make([]error, 0),
+		runtimeFuncs: make(map[string]*ir.Func),
 	}
 
 	return cg
@@ -112,7 +108,7 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 	}
 
 	// float comparison
-	if left.Type().Equal(types.Double) && right.Type().Equal(types.Double) && expr.GetType().Equals(cotypes.FloatType{}) {
+	if left.Type().Equal(types.Double) && right.Type().Equal(types.Double) && expr.GetType().Equals(cotypes.BoolType{}) {
 		switch expr.Operator.Type {
 		case tokens.LESS_THAN:
 			return cg.builder.NewFCmp(enum.FPredOLT, left, right), nil
@@ -144,7 +140,6 @@ func (cg *Codegen) generateIdentifier(expr *ast.IdentifierExpression) (value.Val
 }
 
 func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value, error) {
-	// TODO: only builtin functions (just print) are supported
 	if !expr.IsBuiltin {
 		return nil, cg.addErrorAtNode(expr, "cannot call %q identifier", expr.Identifier.String())
 	}
@@ -158,6 +153,10 @@ func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value
 		return cg.generatePrintExpression(expr)
 	case ast.BuiltinFuncExit:
 		return cg.generateExitExpression(expr)
+	case ast.BuiltinFuncInt:
+		return cg.generateIntExpression(expr)
+	case ast.BuiltinFuncFloat:
+		return cg.generateFloatExpression(expr)
 	default:
 		return nil, cg.addErrorAtNode(expr, "unsupported builtin function %q", expr.Identifier.String())
 	}
@@ -197,7 +196,7 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 
 		toPrintValue, err := cg.generateExpression(arg)
 		if err != nil {
-			return nil, cg.propagateOrWrapError(err, expr, "failed to generate print statement value - %T", arg.GetType())
+			return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for print call expression argument - %T", arg.GetType())
 		}
 
 		if arg.GetType().Equals(cotypes.BoolType{}) {
@@ -213,7 +212,7 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 func (cg *Codegen) generateExitExpression(expr *ast.CallExpression) (value.Value, error) {
 	exitVal, err := cg.generateExpression(expr.Arguments[0])
 	if err != nil {
-		return nil, cg.propagateOrWrapError(err, expr, "failed to generate exit statement value: %s", err.Error())
+		return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for exit call expression argument: %s", err.Error())
 	}
 
 	if exitVal.Type() == types.I64 {
@@ -223,6 +222,32 @@ func (cg *Codegen) generateExitExpression(expr *ast.CallExpression) (value.Value
 	}
 
 	return nil, nil
+}
+
+func (cg *Codegen) generateIntExpression(expr *ast.CallExpression) (value.Value, error) {
+	val, err := cg.generateExpression(expr.Arguments[0])
+	if err != nil {
+		return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for int call expression argument: %s", err.Error())
+	}
+
+	if !val.Type().Equal(types.I64) {
+		return cg.builder.NewFPToSI(val, types.I64), nil
+	}
+
+	return val, nil
+}
+
+func (cg *Codegen) generateFloatExpression(expr *ast.CallExpression) (value.Value, error) {
+	val, err := cg.generateExpression(expr.Arguments[0])
+	if err != nil {
+		return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for float call expression argument: %s", err.Error())
+	}
+
+	if !val.Type().Equal(types.Double) {
+		return cg.builder.NewSIToFP(val, types.Double), nil
+	}
+
+	return val, nil
 }
 
 func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) {
@@ -259,7 +284,7 @@ func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
 
 	initValue, err := cg.generateExpression(stmt.Value)
 	if err != nil {
-		return cg.propagateOrWrapError(err, stmt, "failed to generate let statement value: %s", err.Error())
+		return cg.propagateOrWrapError(err, stmt, "failed to generate value for let statement: %s", err.Error())
 	}
 
 	varType := stmt.Value.GetType()
@@ -289,7 +314,7 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 
 	newValue, err := cg.generateExpression(stmt.Value)
 	if err != nil {
-		return cg.propagateOrWrapError(err, stmt, "failed to generate assignment statement value: %s", err.Error())
+		return cg.propagateOrWrapError(err, stmt, "failed to generate value for assignment statement: %s", err.Error())
 	}
 	newType := stmt.Value.GetType()
 

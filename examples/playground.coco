@@ -1,4 +1,4 @@
 let a = 1;
-let b = 2;
-let c = a >= b;
-print(a, b, c)
+let b = 2.5;
+print(float(a) + b)
+print(a + int(b))
