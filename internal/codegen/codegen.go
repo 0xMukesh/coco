@@ -2,6 +2,8 @@ package codegen
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/ast"
@@ -282,13 +284,30 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 			boolArgs = append(boolArgs, strPtr)
 		}
 	}
-	fmtStr.WriteString("\n\x00")
 
-	fmtGlobalDef := cg.module.NewGlobalDef(fmt.Sprintf(".fmt.%d", cg.nameCounter), constant.NewCharArrayFromString(fmtStr.String()))
-	fmtGlobalDef.Immutable = true
-	fmtGlobalDef.Linkage = enum.LinkagePrivate
-	fmtGlobalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
-	cg.nameCounter++
+	globalDefs := slices.Collect(maps.Values(cg.globalDefs))
+	// check if there is already a global def fmt str with the same value
+	// if yes then reuse instead of creating a new one
+	fmtStrIdx := slices.IndexFunc(globalDefs, func(e *ir.Global) bool {
+		str := fmt.Sprintf("c\"%s\\0A\\00\"", fmtStr.String()) // take the raw fmt string and convert into the style which llir/llvm returns
+		return e.Init.Ident() == str
+	})
+
+	var fmtGlobalDef *ir.Global
+	if fmtStrIdx != -1 {
+		fmtGlobalDef = globalDefs[fmtStrIdx]
+	} else {
+		fmtStr.WriteString("\n\x00") // add newline and null terminator character
+
+		fmtGlobalDefName := fmt.Sprintf(".fmt.%d", cg.nameCounter)
+		fmtGlobalDef = cg.module.NewGlobalDef(fmtGlobalDefName, constant.NewCharArrayFromString(fmtStr.String()))
+		fmtGlobalDef.Immutable = true
+		fmtGlobalDef.Linkage = enum.LinkagePrivate
+		fmtGlobalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
+
+		cg.globalDefs[fmtGlobalDefName] = fmtGlobalDef
+		cg.nameCounter++
+	}
 
 	fmtPtr := cg.builder.NewGetElementPtr(
 		types.NewArray(uint64(len(fmtStr.String())), types.I8),
