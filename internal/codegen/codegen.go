@@ -23,7 +23,7 @@ type ScopeItem struct {
 
 type Codegen struct {
 	module  *ir.Module
-	fn      *ir.Func
+	mainFn  *ir.Func
 	builder *ir.Block
 	ret     value.Value
 
@@ -37,12 +37,12 @@ type Codegen struct {
 
 func New() *Codegen {
 	module := ir.NewModule()
-	fn := module.NewFunc("main", types.I32)
-	builder := fn.NewBlock("")
+	mainFn := module.NewFunc("main", types.I32)
+	builder := mainFn.NewBlock("")
 
 	cg := &Codegen{
 		module:       module,
-		fn:           fn,
+		mainFn:       mainFn,
 		builder:      builder,
 		scope:        env.NewEnvironment[ScopeItem](),
 		runtimeFuncs: make(map[string]*ir.Func),
@@ -101,6 +101,8 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 		return cg.generateCallExpression(e)
 	case *ast.GroupedExpression:
 		return cg.generateExpression(e.Expr)
+	case *ast.IfExpression:
+		return cg.generateIfExpression(e)
 	default:
 		return nil, cg.addErrorAtNode(expr, "unsupported expression type")
 	}
@@ -356,6 +358,30 @@ func (cg *Codegen) generateFloatExpression(expr *ast.CallExpression) (value.Valu
 	}
 
 	return val, nil
+}
+
+func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, error) {
+	condition, err := cg.generateExpression(expr.Condition)
+	if err != nil {
+		return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for if-branch condition: %s", err.Error())
+	}
+
+	ifTrue := cg.mainFn.NewBlock("")
+	ifFalse := cg.mainFn.NewBlock("")
+	merge := cg.mainFn.NewBlock("")
+
+	cg.builder.NewCondBr(condition, ifTrue, ifFalse)
+
+	cg.builder = ifTrue
+	cg.generateStatement(expr.Consequence)
+	cg.builder.NewBr(merge)
+
+	cg.builder = ifFalse
+	cg.generateStatement(expr.Alternative)
+	cg.builder.NewBr(merge)
+
+	cg.builder = merge
+	return nil, nil
 }
 
 func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {

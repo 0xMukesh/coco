@@ -1,7 +1,12 @@
-let a = true
-let b = 3.14
-{
-  let b = 6.9
-  print(b, b)
+let a = 10;
+
+if (a < 10) {
+  let a = 20;
+  print(a);
+} else if (a > 7) {
+  print(a+5);
+} else {
+  print(a)
 }
-print(a, b)
+
+print(a);

@@ -51,6 +51,10 @@ func (tc *TypeChecker) checkExpression(expr ast.Expression) (t cotypes.Type, err
 		t, err = tc.checkBinaryExpression(e)
 	case *ast.CallExpression:
 		t, err = tc.checkCallExpression(e)
+	case *ast.GroupedExpression:
+		t, err = tc.checkExpression(e.Expr)
+	case *ast.IfExpression:
+		t, err = tc.checkIfExpression(e)
 	default:
 		err = fmt.Errorf("unknown expression of type %T", expr)
 	}
@@ -189,6 +193,26 @@ func (tc *TypeChecker) checkCallExpression(expr *ast.CallExpression) (t cotypes.
 
 	err = fmt.Errorf("cannot call %s identifier", expr.Identifier.String())
 	return
+}
+
+func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (t cotypes.Type, err error) {
+	conditionType, err := tc.checkExpression(expr.Condition)
+	if err != nil {
+		return t, tc.propagateOrWrapError(err, expr, "failed to type check if branch condition expression: %s", err.Error())
+	}
+
+	if !conditionType.Equals(cotypes.BoolType{}) {
+		return t, fmt.Errorf("non-boolean condition if if expression")
+	}
+
+	tc.checkStatement(expr.Consequence)
+
+	if expr.Alternative != nil {
+		tc.checkStatement(expr.Alternative)
+	}
+
+	// TODO: need to proper handle the return type for if-expression after adding support for return statements
+	return cotypes.VoidType{}, nil
 }
 
 func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) (t cotypes.Type, err error) {
