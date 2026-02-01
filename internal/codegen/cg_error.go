@@ -11,6 +11,14 @@ type CodegenError struct {
 	node    ast.Node
 }
 
+func (e *CodegenError) Error() string {
+	return fmt.Sprintf("codegen error at %q: %s", e.node, e.message)
+}
+
+func (e *CodegenError) Node() ast.Node {
+	return e.node
+}
+
 func isCodegenError(err error) bool {
 	_, ok := err.(*CodegenError)
 	return ok
@@ -38,12 +46,4 @@ func (cg *Codegen) propagateOrWrapError(err error, node ast.Node, msg string, ar
 	}
 
 	return cg.addErrorAtNode(node, msg, args...)
-}
-
-func (e *CodegenError) Error() string {
-	return fmt.Sprintf("codegen error at %q: %s", e.node, e.message)
-}
-
-func (e *CodegenError) Node() ast.Node {
-	return e.node
 }

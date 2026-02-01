@@ -1,7 +1,7 @@
-let a = true;
-let b = 3.14;
+let a = true
+let b = 3.14
 {
-  let b = 6.9;
+  let b = 6.9
   print(b, b)
 }
 print(a, b)

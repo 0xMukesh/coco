@@ -8,7 +8,7 @@ import (
 type builtinsInfo struct {
 	name    string
 	kind    ast.BuiltinsKind
-	checker func(*ast.CallExpression) cotypes.Type
+	checker func(*ast.CallExpression) (t cotypes.Type, err error)
 }
 
 func (tc *TypeChecker) registerBuiltins() {

@@ -65,7 +65,7 @@ func (d *Driver) TypeCheck(program *ast.Program) error {
 	tc := typechecker.New()
 	tc.Transform(program)
 	if tc.HasErrors() {
-		return errors.New(strings.Join(tc.Errors(), "\n"))
+		return errors.Join(tc.Errors()...)
 	}
 
 	return nil

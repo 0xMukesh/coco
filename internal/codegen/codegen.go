@@ -53,6 +53,59 @@ func New() *Codegen {
 	return cg
 }
 
+func (cg *Codegen) generateStatement(stmt ast.Statement) error {
+	switch s := stmt.(type) {
+	case *ast.ExpressionStatement:
+		_, err := cg.generateExpression(s.Expr)
+		if err != nil {
+			return err
+		}
+	case *ast.LetStatement:
+		return cg.generateLetStatement(s)
+	case *ast.AssignmentStatement:
+		return cg.generateAssignmentStatement(s)
+	case *ast.BlockStatement:
+		previousScope := cg.scope
+		cg.scope = env.NewEnvironmentWithParent(previousScope)
+
+		for _, stmt := range s.Statements {
+			if err := cg.generateStatement(stmt); err != nil {
+				return err
+			}
+		}
+
+		cg.scope = previousScope
+		return nil
+	}
+
+	return nil
+}
+
+func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) {
+	if expr.GetType() == nil {
+		return nil, cg.addErrorAtNode(expr, "expression has no type")
+	}
+
+	switch e := expr.(type) {
+	case *ast.IntegerExpression:
+		return constant.NewInt(types.I64, e.Value), nil
+	case *ast.FloatExpression:
+		return constant.NewFloat(types.Double, e.Value), nil
+	case *ast.BooleanExpression:
+		return constant.NewBool(e.Value), nil
+	case *ast.IdentifierExpression:
+		return cg.generateIdentifier(e)
+	case *ast.BinaryExpression:
+		return cg.generateBinaryExpression(e)
+	case *ast.CallExpression:
+		return cg.generateCallExpression(e)
+	case *ast.GroupedExpression:
+		return cg.generateExpression(e.Expr)
+	default:
+		return nil, cg.addErrorAtNode(expr, "unsupported expression type")
+	}
+}
+
 func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.Value, error) {
 	left, err := cg.generateExpression(expr.Left)
 	if err != nil {
@@ -305,31 +358,6 @@ func (cg *Codegen) generateFloatExpression(expr *ast.CallExpression) (value.Valu
 	return val, nil
 }
 
-func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) {
-	if expr.GetType() == nil {
-		return nil, cg.addErrorAtNode(expr, "expression has no type")
-	}
-
-	switch e := expr.(type) {
-	case *ast.IntegerExpression:
-		return constant.NewInt(types.I64, e.Value), nil
-	case *ast.FloatExpression:
-		return constant.NewFloat(types.Double, e.Value), nil
-	case *ast.BooleanExpression:
-		return constant.NewBool(e.Value), nil
-	case *ast.IdentifierExpression:
-		return cg.generateIdentifier(e)
-	case *ast.BinaryExpression:
-		return cg.generateBinaryExpression(e)
-	case *ast.CallExpression:
-		return cg.generateCallExpression(e)
-	case *ast.GroupedExpression:
-		return cg.generateExpression(e.Expr)
-	default:
-		return nil, cg.addErrorAtNode(expr, "unsupported expression type")
-	}
-}
-
 func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
 	varName := stmt.Identifier.String()
 	exists := cg.scope.Has(varName)
@@ -376,34 +404,6 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 	}
 
 	cg.builder.NewStore(newValue, variable.alloca)
-	return nil
-}
-
-func (cg *Codegen) generateStatement(stmt ast.Statement) error {
-	switch s := stmt.(type) {
-	case *ast.ExpressionStatement:
-		_, err := cg.generateExpression(s.Expr)
-		if err != nil {
-			return err
-		}
-	case *ast.LetStatement:
-		return cg.generateLetStatement(s)
-	case *ast.AssignmentStatement:
-		return cg.generateAssignmentStatement(s)
-	case *ast.BlockStatement:
-		previousScope := cg.scope
-		cg.scope = env.NewEnvironmentWithParent(previousScope)
-
-		for _, stmt := range s.Statements {
-			if err := cg.generateStatement(stmt); err != nil {
-				return err
-			}
-		}
-
-		cg.scope = previousScope
-		return nil
-	}
-
 	return nil
 }
 
