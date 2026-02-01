@@ -4,19 +4,22 @@ import (
 	"fmt"
 
 	"github.com/0xmukesh/coco/internal/ast"
+	"github.com/0xmukesh/coco/internal/env"
 	"github.com/0xmukesh/coco/internal/tokens"
 	cotypes "github.com/0xmukesh/coco/internal/types"
 )
 
+type TypeEnvironment = *env.Environent[cotypes.Type]
+
 type TypeChecker struct {
-	env      *cotypes.TypeEnvironment
+	env      TypeEnvironment
 	builtins map[string]*builtinsInfo
 	errors   []string
 }
 
-func New(env *cotypes.TypeEnvironment) *TypeChecker {
+func New() *TypeChecker {
 	tc := &TypeChecker{
-		env:      env,
+		env:      env.NewEnvironment[cotypes.Type](),
 		errors:   []string{},
 		builtins: make(map[string]*builtinsInfo),
 	}
@@ -211,6 +214,12 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) {
 	case *ast.ExpressionStatement:
 		tc.checkExpression(s.Expr)
 	case *ast.LetStatement:
+		varName := s.Identifier.String()
+		if tc.env.Has(varName) {
+			tc.addError("cannot redeclare variable: %s", varName)
+			return
+		}
+
 		varType := tc.checkExpression(s.Value)
 		tc.env.Set(s.Identifier.String(), varType)
 	case *ast.AssignmentStatement:
@@ -220,6 +229,13 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) {
 		}
 
 		tc.checkExpression(s.Value)
+	case *ast.BlockStatement:
+		tc.env = env.NewEnvironmentWithParent(tc.env)
+		for _, s := range s.Statements {
+			tc.checkStatement(s)
+		}
+
+		tc.env = tc.env.Parent()
 	}
 }
 

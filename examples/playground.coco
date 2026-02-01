@@ -1,4 +1,7 @@
-let a = 1;
-let b = 2.5;
-print(float(a) + b)
-print(a + int(b))
+let a = true;
+let b = 3.14;
+{
+  let b = 6.9;
+  print(b, b)
+}
+print(a, b)

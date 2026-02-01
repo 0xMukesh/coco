@@ -1,7 +1,11 @@
 package codegen
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/0xmukesh/coco/internal/ast"
+	"github.com/0xmukesh/coco/internal/env"
 	"github.com/0xmukesh/coco/internal/tokens"
 	cotypes "github.com/0xmukesh/coco/internal/types"
 	"github.com/llir/llvm/ir"
@@ -11,20 +15,24 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-type Variable struct {
-	alloca  *ir.InstAlloca
-	varType cotypes.Type
+type Scope = *env.Environent[ScopeItem]
+type ScopeItem struct {
+	alloca *ir.InstAlloca
+	typ    cotypes.Type
 }
 
 type Codegen struct {
-	module       *ir.Module
-	fn           *ir.Func
-	builder      *ir.Block
-	ret          value.Value
-	variables    map[string]*Variable
-	runtimeFuncs map[string]*ir.Func
+	module  *ir.Module
+	fn      *ir.Func
+	builder *ir.Block
+	ret     value.Value
 
-	errors []error
+	scope        Scope
+	runtimeFuncs map[string]*ir.Func
+	globalDefs   map[string]*ir.Global
+
+	nameCounter int
+	errors      []error
 }
 
 func New() *Codegen {
@@ -36,9 +44,10 @@ func New() *Codegen {
 		module:       module,
 		fn:           fn,
 		builder:      builder,
-		variables:    make(map[string]*Variable),
-		errors:       make([]error, 0),
+		scope:        env.NewEnvironment[ScopeItem](),
 		runtimeFuncs: make(map[string]*ir.Func),
+		globalDefs:   make(map[string]*ir.Global),
+		errors:       make([]error, 0),
 	}
 
 	return cg
@@ -131,7 +140,7 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 }
 
 func (cg *Codegen) generateIdentifier(expr *ast.IdentifierExpression) (value.Value, error) {
-	variable, exists := cg.variables[expr.Literal]
+	variable, exists := cg.scope.Get(expr.Literal)
 	if !exists {
 		return nil, cg.addErrorAtNode(expr, "undefined variable %q", expr.Literal)
 	}
@@ -163,49 +172,95 @@ func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value
 }
 
 func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Value, error) {
-	for _, arg := range expr.Arguments {
-		printFuncName := cg.getRuntimePrintFuncByType(arg.GetType())
-		if printFuncName == "" {
-			return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
-		}
-
-		printFunc, exists := cg.runtimeFuncs[printFuncName]
-		if !exists {
-			var param *ir.Param
-
-			switch arg.GetType().(type) {
-			case cotypes.IntType:
-				param = ir.NewParam("value", types.I64)
-			case cotypes.FloatType:
-				param = ir.NewParam("value", types.Double)
-			case cotypes.BoolType:
-				param = ir.NewParam("value", types.I1)
-			}
-
-			if param == nil {
-				return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
-			}
-
-			printFunc = cg.module.NewFunc(printFuncName, types.Void, param)
-			cg.setRuntimeFunc(printFuncName, printFunc)
-		}
-
-		if printFunc == nil {
-			return nil, cg.addErrorAtNode(expr, "unsupported argument type for print expression - %T", arg.GetType())
-		}
-
-		toPrintValue, err := cg.generateExpression(arg)
-		if err != nil {
-			return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for print call expression argument - %T", arg.GetType())
-		}
-
-		if arg.GetType().Equals(cotypes.BoolType{}) {
-			toPrintValue = cg.builder.NewZExt(toPrintValue, types.I64)
-		}
-
-		cg.builder.NewCall(printFunc, toPrintValue)
+	funcName := expr.Identifier.String()
+	printfFunc, ok := cg.runtimeFuncs[funcName]
+	if !ok {
+		printfFunc = cg.setupPrintfRuntimeFunc()
 	}
 
+	var fmtStr strings.Builder
+	var boolArgs []value.Value
+
+	for i, arg := range expr.Arguments {
+		if i > 0 {
+			fmtStr.WriteString(" ")
+		}
+
+		switch arg.GetType().(type) {
+		case cotypes.IntType:
+			fmtStr.WriteString("%ld")
+		case cotypes.FloatType:
+			fmtStr.WriteString("%g")
+		case cotypes.BoolType:
+			fmtStr.WriteString("%s")
+
+			trueStr, ok := cg.globalDefs[TRUE_GLOBAL_DEF_NAME]
+			if !ok {
+				trueStr = cg.setupTrueGlobalDef()
+			}
+
+			falseStr, ok := cg.globalDefs[FALSE_GLOBAL_DEF_NAME]
+			if !ok {
+				falseStr = cg.setupFalseStrGlobalDef()
+			}
+
+			truePtr := cg.builder.NewGetElementPtr(
+				types.NewArray(uint64(len("true\x00")), types.I8),
+				trueStr,
+				constant.NewInt(types.I64, 0),
+				constant.NewInt(types.I64, 0),
+			)
+
+			falsePtr := cg.builder.NewGetElementPtr(
+				types.NewArray(uint64(len("false\x00")), types.I8),
+				falseStr,
+				constant.NewInt(types.I64, 0),
+				constant.NewInt(types.I64, 0),
+			)
+
+			boolValue, err := cg.generateExpression(arg)
+			if err != nil {
+				return nil, err
+			}
+
+			strPtr := cg.builder.NewSelect(boolValue, truePtr, falsePtr)
+			boolArgs = append(boolArgs, strPtr)
+		}
+	}
+	fmtStr.WriteString("\n\x00")
+
+	fmtGlobalDef := cg.module.NewGlobalDef(fmt.Sprintf(".fmt.%d", cg.nameCounter), constant.NewCharArrayFromString(fmtStr.String()))
+	fmtGlobalDef.Immutable = true
+	fmtGlobalDef.Linkage = enum.LinkagePrivate
+	fmtGlobalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
+	cg.nameCounter++
+
+	fmtPtr := cg.builder.NewGetElementPtr(
+		types.NewArray(uint64(len(fmtStr.String())), types.I8),
+		fmtGlobalDef,
+		constant.NewInt(types.I64, 0),
+		constant.NewInt(types.I64, 0),
+	)
+
+	args := []value.Value{fmtPtr}
+	boolIdx := 0
+	for _, arg := range expr.Arguments {
+		switch arg.GetType().(type) {
+		case cotypes.BoolType:
+			// use precomputed boolean str value
+			args = append(args, boolArgs[boolIdx])
+			boolIdx++
+		default:
+			v, err := cg.generateExpression(arg)
+			if err != nil {
+				return nil, err
+			}
+
+			args = append(args, v)
+		}
+	}
+
+	cg.builder.NewCall(printfFunc, args...)
 	return nil, nil
 }
 
@@ -277,7 +332,7 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 
 func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
 	varName := stmt.Identifier.String()
-	_, exists := cg.variables[varName]
+	exists := cg.scope.Has(varName)
 	if exists {
 		return cg.addErrorAtNode(stmt, "cannot redeclare %q variable", varName)
 	}
@@ -294,20 +349,18 @@ func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
 	}
 
 	alloca := cg.builder.NewAlloca(llvmType)
-	alloca.SetName(varName)
-
 	cg.builder.NewStore(initValue, alloca)
 
-	cg.variables[varName] = &Variable{
-		alloca:  alloca,
-		varType: varType,
-	}
+	cg.scope.Set(varName, ScopeItem{
+		alloca: alloca,
+		typ:    varType,
+	})
 	return nil
 }
 
 func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) error {
 	varName := stmt.Identifier.String()
-	variable, exists := cg.variables[varName]
+	variable, exists := cg.scope.Get(varName)
 	if !exists {
 		return cg.addErrorAtNode(stmt, "cannot assign to undefined variable: %s", varName)
 	}
@@ -318,8 +371,8 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 	}
 	newType := stmt.Value.GetType()
 
-	if !variable.varType.Equals(newType) {
-		return cg.addErrorAtNode(stmt, "cannot assign %s type to variable of type %s", newType, variable.varType)
+	if !variable.typ.Equals(newType) {
+		return cg.addErrorAtNode(stmt, "cannot assign %s type to variable of type %s", newType, variable.typ)
 	}
 
 	cg.builder.NewStore(newValue, variable.alloca)
@@ -337,6 +390,18 @@ func (cg *Codegen) generateStatement(stmt ast.Statement) error {
 		return cg.generateLetStatement(s)
 	case *ast.AssignmentStatement:
 		return cg.generateAssignmentStatement(s)
+	case *ast.BlockStatement:
+		previousScope := cg.scope
+		cg.scope = env.NewEnvironmentWithParent(previousScope)
+
+		for _, stmt := range s.Statements {
+			if err := cg.generateStatement(stmt); err != nil {
+				return err
+			}
+		}
+
+		cg.scope = previousScope
+		return nil
 	}
 
 	return nil

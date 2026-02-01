@@ -15,12 +15,10 @@ import (
 	"github.com/0xmukesh/coco/internal/parser"
 	"github.com/0xmukesh/coco/internal/tokens"
 	"github.com/0xmukesh/coco/internal/typechecker"
-	cotypes "github.com/0xmukesh/coco/internal/types"
 )
 
 type Driver struct {
-	source       *Source
-	runtimeCache *RuntimeCache
+	source *Source
 }
 
 func NewDriver(src *Source) *Driver {
@@ -35,14 +33,8 @@ func NewDriverFromFile(file string) (*Driver, error) {
 		return nil, err
 	}
 
-	rc, err := NewRuntimeCache()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Driver{
-		source:       src,
-		runtimeCache: rc,
+		source: src,
 	}, nil
 }
 
@@ -70,8 +62,7 @@ func (d *Driver) Parse(tks []tokens.Token) (*ast.Program, error) {
 }
 
 func (d *Driver) TypeCheck(program *ast.Program) error {
-	tenv := cotypes.NewTypeEnvironment()
-	tc := typechecker.New(tenv)
+	tc := typechecker.New()
 	tc.Transform(program)
 	if tc.HasErrors() {
 		return errors.New(strings.Join(tc.Errors(), "\n"))
@@ -109,7 +100,7 @@ func (d *Driver) IrFileToBinary(irFilePath string, outFilePath string, deleteIrA
 		outFilePath = strings.Replace(irFilePath, ".ll", "", 1)
 	}
 
-	cmd := exec.Command("clang", irFilePath, d.runtimeCache.objPath, "-o", outFilePath)
+	cmd := exec.Command("clang", "-O2", irFilePath, "-o", outFilePath)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
