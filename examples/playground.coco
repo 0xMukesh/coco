@@ -1,25 +1,16 @@
-let a = 5;
-let b = 10;
-let c = true;
+let temp = 10.0;
+let threshold = 68.0;
 
-if (c) {
-  let a = 20;
-  if (b > 5) {
-    let a = 30;
-    print(a, b);
-  } else {
-    print(a, b);
-  }
-  print(a);
+let is_warm = if (temp > threshold) {
+  return true;
 } else {
-  let b = 50;
-  if (a > 10) {
-    print(a, b);
-  } else {
-    let a = 100;
-    print(a, b);
-  }
-  print(a, b);
+  return false;
 }
 
-print(a, b);
+if (is_warm) {
+  print("warm!");
+} else {
+  print("eh, it's cool!");
+}
+
+exit(0);

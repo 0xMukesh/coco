@@ -257,7 +257,7 @@ func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) (t cotypes.Ty
 
 		arg.SetType(argType)
 
-		if !argType.Equals(cotypes.IntType{}) && !argType.Equals(cotypes.FloatType{}) && !argType.Equals(cotypes.BoolType{}) {
+		if !argType.Equals(cotypes.IntType{}) && !argType.Equals(cotypes.FloatType{}) && !argType.Equals(cotypes.BoolType{}) && !argType.Equals(cotypes.StringType{}) {
 			return t, fmt.Errorf("invalid argument at %d idx to print", i)
 		}
 	}

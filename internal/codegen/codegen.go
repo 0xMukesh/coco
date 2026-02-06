@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/0xmukesh/coco/internal/ast"
@@ -88,6 +89,8 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 		return constant.NewFloat(types.Double, e.Value), nil
 	case *ast.BooleanExpression:
 		return constant.NewBool(e.Value), nil
+	case *ast.StringExpression:
+		return cg.generateStringExpression(e)
 	case *ast.IdentifierExpression:
 		return cg.generateIdentifier(e)
 	case *ast.BinaryExpression:
@@ -241,6 +244,8 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 			fmtStr.WriteString("%ld")
 		case cotypes.FloatType:
 			fmtStr.WriteString("%g")
+		case cotypes.StringType:
+			fmtStr.WriteString("%s")
 		case cotypes.BoolType:
 			fmtStr.WriteString("%s")
 
@@ -279,19 +284,17 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 	}
 
 	globalDefs := slices.Collect(maps.Values(cg.globalDefs))
-	// check if there is already a global def fmt str with the same value
-	// if yes then reuse instead of creating a new one
 	fmtStrIdx := slices.IndexFunc(globalDefs, func(e *ir.Global) bool {
-		str := fmt.Sprintf("c\"%s\\0A\\00\"", fmtStr.String()) // take the raw fmt string and convert into the style which llir/llvm returns
+		str := fmt.Sprintf("c\"%s\\0A\\00\"", fmtStr.String())
 		return e.Init.Ident() == str
 	})
+
+	fmtStr.WriteString("\n\x00")
 
 	var fmtGlobalDef *ir.Global
 	if fmtStrIdx != -1 {
 		fmtGlobalDef = globalDefs[fmtStrIdx]
 	} else {
-		fmtStr.WriteString("\n\x00") // add newline and null terminator character
-
 		fmtGlobalDefName := fmt.Sprintf(".fmt.%d", cg.nameCounter)
 		fmtGlobalDef = cg.module.NewGlobalDef(fmtGlobalDefName, constant.NewCharArrayFromString(fmtStr.String()))
 		fmtGlobalDef.Immutable = true
@@ -321,6 +324,20 @@ func (cg *Codegen) generatePrintExpression(expr *ast.CallExpression) (value.Valu
 			v, err := cg.generateExpression(arg)
 			if err != nil {
 				return nil, err
+			}
+
+			if arg.GetType().Equals(cotypes.StringType{}) {
+				str, err := strconv.Unquote(arg.String())
+				if err != nil {
+					return nil, fmt.Errorf("invalid string - %s", err.Error())
+				}
+
+				v = cg.builder.NewGetElementPtr(
+					types.NewArray(uint64(len(str)+1), types.I8),
+					v,
+					constant.NewInt(types.I64, 0),
+					constant.NewInt(types.I64, 0),
+				)
 			}
 
 			args = append(args, v)
@@ -375,6 +392,35 @@ func (cg *Codegen) generateFloatExpression(expr *ast.CallExpression) (value.Valu
 	return val, nil
 }
 
+func (cg *Codegen) generateStringExpression(expr *ast.StringExpression) (value.Value, error) {
+	globalDefs := slices.Collect(maps.Values(cg.globalDefs))
+	str, err := strconv.Unquote(expr.Value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid string - %s", err.Error())
+	}
+
+	str += "\x00"
+
+	strIdx := slices.IndexFunc(globalDefs, func(e *ir.Global) bool {
+		return e.Init.Ident() == str
+	})
+
+	if strIdx != -1 {
+		return globalDefs[strIdx], nil
+	} else {
+		globalDefName := fmt.Sprintf(".str.%d", cg.nameCounter)
+		globalDef := cg.module.NewGlobalDef(globalDefName, constant.NewCharArrayFromString(str))
+		globalDef.Immutable = true
+		globalDef.Linkage = enum.LinkagePrivate
+		globalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
+
+		cg.globalDefs[globalDefName] = globalDef
+		cg.nameCounter++
+
+		return globalDef, nil
+	}
+}
+
 func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, error) {
 	condition, err := cg.generateExpression(expr.Condition)
 	if err != nil {
@@ -406,7 +452,7 @@ func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, er
 	// merge branch
 	cg.builder = merge
 	if trueVal != nil && falseVal != nil {
-		cg.blockReturnValue = trueVal
+		cg.blockReturnValue = cg.builder.NewPhi(ir.NewIncoming(trueVal, ifTrue), ir.NewIncoming(falseVal, ifFalse))
 	}
 
 	return cg.blockReturnValue, nil
