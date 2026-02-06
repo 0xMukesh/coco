@@ -24,10 +24,11 @@ type ScopeItem struct {
 }
 
 type Codegen struct {
-	module  *ir.Module
-	mainFn  *ir.Func
-	builder *ir.Block
-	ret     value.Value
+	module *ir.Module
+	mainFn *ir.Func
+
+	builder          *ir.Block
+	blockReturnValue value.Value
 
 	scope        Scope
 	runtimeFuncs map[string]*ir.Func
@@ -67,17 +68,9 @@ func (cg *Codegen) generateStatement(stmt ast.Statement) error {
 	case *ast.AssignmentStatement:
 		return cg.generateAssignmentStatement(s)
 	case *ast.BlockStatement:
-		previousScope := cg.scope
-		cg.scope = env.NewEnvironmentWithParent(previousScope)
-
-		for _, stmt := range s.Statements {
-			if err := cg.generateStatement(stmt); err != nil {
-				return err
-			}
-		}
-
-		cg.scope = previousScope
-		return nil
+		return cg.generateBlockStatement(s)
+	case *ast.ReturnStatement:
+		return cg.generateReturnStatement(s)
 	}
 
 	return nil
@@ -145,7 +138,7 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		case tokens.MINUS:
 			return cg.builder.NewFSub(left, right), nil
 		case tokens.STAR:
-			return cg.builder.NewMul(left, right), nil
+			return cg.builder.NewFMul(left, right), nil
 		case tokens.SLASH:
 			return cg.builder.NewFDiv(left, right), nil
 		default:
@@ -344,11 +337,14 @@ func (cg *Codegen) generateExitExpression(expr *ast.CallExpression) (value.Value
 		return nil, cg.propagateOrWrapError(err, expr, "failed to generate value for exit call expression argument: %s", err.Error())
 	}
 
+	var retVal value.Value
 	if exitVal.Type() == types.I64 {
-		cg.ret = cg.builder.NewTrunc(exitVal, types.I32)
+		retVal = cg.builder.NewTrunc(exitVal, types.I32)
 	} else {
-		cg.ret = exitVal
+		retVal = exitVal
 	}
+
+	cg.builder.NewRet(retVal)
 
 	return nil, nil
 }
@@ -391,16 +387,29 @@ func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, er
 
 	cg.builder.NewCondBr(condition, ifTrue, ifFalse)
 
+	// true branch
 	cg.builder = ifTrue
-	cg.generateStatement(expr.Consequence)
+	cg.blockReturnValue = nil
+	if err := cg.generateStatement(expr.Consequence); err != nil {
+		return nil, err
+	}
 	cg.builder.NewBr(merge)
+	trueVal := cg.blockReturnValue
 
+	// false branch
 	cg.builder = ifFalse
+	cg.blockReturnValue = nil
 	cg.generateStatement(expr.Alternative)
 	cg.builder.NewBr(merge)
+	falseVal := cg.blockReturnValue
 
+	// merge branch
 	cg.builder = merge
-	return nil, nil
+	if trueVal != nil && falseVal != nil {
+		cg.blockReturnValue = trueVal
+	}
+
+	return cg.blockReturnValue, nil
 }
 
 func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
@@ -452,6 +461,30 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 	return nil
 }
 
+func (cg *Codegen) generateBlockStatement(stmt *ast.BlockStatement) error {
+	previousScope := cg.scope
+	cg.scope = env.NewEnvironmentWithParent(previousScope)
+
+	for _, s := range stmt.Statements {
+		if err := cg.generateStatement(s); err != nil {
+			return err
+		}
+	}
+
+	cg.scope = previousScope
+	return nil
+}
+
+func (cg *Codegen) generateReturnStatement(stmt *ast.ReturnStatement) error {
+	val, err := cg.generateExpression(stmt.Expr)
+	if err != nil {
+		return cg.propagateOrWrapError(err, stmt, "failed to generate value for return statement: %s", err.Error())
+	}
+
+	cg.blockReturnValue = val
+	return nil
+}
+
 func (cg *Codegen) Generate(program *ast.Program) *ir.Module {
 	for _, stmt := range program.Statements {
 		if err := cg.generateStatement(stmt); err != nil {
@@ -459,12 +492,9 @@ func (cg *Codegen) Generate(program *ast.Program) *ir.Module {
 		}
 	}
 
-	if cg.ret != nil {
-		cg.builder.NewRet(cg.ret)
-	} else {
+	if cg.builder.Term == nil {
 		cg.builder.NewRet(constant.NewInt(types.I32, 0))
 	}
-
 	return cg.module
 }
 

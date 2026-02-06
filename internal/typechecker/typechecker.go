@@ -15,6 +15,9 @@ type TypeChecker struct {
 	env      TypeEnvironment
 	builtins map[string]*builtinsInfo
 
+	// if if-expression is used for variable binding then a return value is expected
+	ifExpressionReturnValueExpected bool
+
 	errors []error
 }
 
@@ -71,7 +74,7 @@ func (tc *TypeChecker) checkExpression(expr ast.Expression) (t cotypes.Type, err
 func (tc *TypeChecker) checkStatement(stmt ast.Statement) (err error) {
 	switch s := stmt.(type) {
 	case *ast.ExpressionStatement:
-		tc.checkExpression(s.Expr)
+		_, err = tc.checkExpression(s.Expr)
 	case *ast.LetStatement:
 		varName := s.Identifier.String()
 		if tc.env.Has(varName) {
@@ -91,14 +94,18 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) (err error) {
 			err = fmt.Errorf("unknown identifier: %s", s.Identifier.String())
 		}
 
-		tc.checkExpression(s.Value)
+		_, err = tc.checkExpression(s.Value)
 	case *ast.BlockStatement:
 		tc.env = env.NewEnvironmentWithParent(tc.env)
 		for _, s := range s.Statements {
-			tc.checkStatement(s)
+			if err := tc.checkStatement(s); err != nil {
+				return err
+			}
 		}
 
 		tc.env = tc.env.Parent()
+	case *ast.ReturnStatement:
+		_, err = tc.checkExpression(s.Expr)
 	}
 
 	return
@@ -205,14 +212,40 @@ func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (t cotypes.Type
 		return t, fmt.Errorf("non-boolean condition if if expression")
 	}
 
-	tc.checkStatement(expr.Consequence)
+	var (
+		consequenceReturnType cotypes.Type = nil
+		alternativeReturnType cotypes.Type = nil
+	)
 
-	if expr.Alternative != nil {
-		tc.checkStatement(expr.Alternative)
+	for _, stmt := range expr.Consequence.Statements {
+		tc.checkStatement(expr.Consequence)
+		returnStmt, ok := stmt.(*ast.ReturnStatement)
+
+		if ok {
+			consequenceReturnType = returnStmt.Expr.GetType()
+		}
 	}
 
-	// TODO: need to proper handle the return type for if-expression after adding support for return statements
-	return cotypes.VoidType{}, nil
+	if expr.Alternative != nil {
+		for _, stmt := range expr.Alternative.Statements {
+			tc.checkStatement(expr.Alternative)
+			returnStmt, ok := stmt.(*ast.ReturnStatement)
+
+			if ok {
+				alternativeReturnType = returnStmt.Expr.GetType()
+			}
+		}
+	}
+
+	if consequenceReturnType != nil && alternativeReturnType != nil && consequenceReturnType.Equals(alternativeReturnType) {
+		return consequenceReturnType, nil
+	}
+
+	if consequenceReturnType == nil && alternativeReturnType == nil {
+		return cotypes.VoidType{}, nil
+	}
+
+	return t, fmt.Errorf("return types of if and else blocks need to be equal. got %q from if-block and %q from else-block", consequenceReturnType, alternativeReturnType)
 }
 
 func (tc *TypeChecker) checkPrintBuiltin(expr *ast.CallExpression) (t cotypes.Type, err error) {

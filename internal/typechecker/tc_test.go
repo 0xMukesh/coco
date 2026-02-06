@@ -9,11 +9,10 @@ import (
 )
 
 func TestTypeChecker(t *testing.T) {
-	source := `let a = true
-if (a) {
-  print(1)
+	source := `let a = if (5 < 2) {
+  return true;
 } else {
-  print(0)
+  return false;
 }`
 	l := lexer.New(source)
 	tks := l.Lex()
