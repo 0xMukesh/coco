@@ -1,51 +1,71 @@
 package codegen
 
 import (
-	cotypes "github.com/0xmukesh/coco/internal/types"
+	"fmt"
+	"maps"
+	"slices"
+
+	"github.com/0xmukesh/coco/internal/utils"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
 	"github.com/llir/llvm/ir/types"
 )
 
-var TRUE_GLOBAL_DEF_NAME = "__coco_true"
-var FALSE_GLOBAL_DEF_NAME = "__coco_false"
+var (
+	TRUE_STR_GLOBAL_DEF_NAME  = "__coco_true"
+	FALSE_STR_GLOBAL_DEF_NAME = "__coco_false"
+)
 
-func (cg *Codegen) typeToLlvm(t cotypes.Type) (types.Type, error) {
-	switch t.(type) {
-	case cotypes.IntType:
-		return types.I64, nil
-	case cotypes.FloatType:
-		return types.Double, nil
-	case cotypes.BoolType:
-		return types.I1, nil
-	default:
-		return nil, cg.addError("unsupported type - %v", t)
+func (cg *Codegen) getOrCreateStringLiteral(str string, name string) *ir.Global {
+	// before passing string literals to llvm, null terminator is added to the end of the string
+	str += "\x00"
+
+	globalDefs := slices.Collect(maps.Values(cg.globalDefs))
+	strIdx := slices.IndexFunc(globalDefs, func(e *ir.Global) bool {
+		return e.Init.Ident() == str
+	})
+
+	if strIdx != -1 {
+		return globalDefs[strIdx]
+	} else {
+		if name == "" {
+			name = fmt.Sprintf(".str.%d", cg.nameCounter)
+
+		}
+
+		globalDef := cg.module.NewGlobalDef(name, constant.NewCharArrayFromString(str))
+		globalDef.Immutable = true
+		globalDef.Linkage = enum.LinkagePrivate
+		globalDef.UnnamedAddr = enum.UnnamedAddrUnnamedAddr
+
+		cg.globalDefs[name] = globalDef
+		cg.nameCounter++
+
+		return globalDef
 	}
 }
 
-func (cg *Codegen) setupPrintfRuntimeFunc() *ir.Func {
-	printfFunc := cg.module.NewFunc("printf", types.I32, ir.NewParam("fmt", types.NewPointer(types.I8)))
-	printfFunc.Sig.Variadic = true
-	cg.runtimeFuncs["print"] = printfFunc
+func (cg *Codegen) getStringLiteralPointer(strGlobalDef *ir.Global) (*ir.InstGetElementPtr, error) {
+	strValue, err := utils.LlvmStringToGoLiteral(strGlobalDef.Init.Ident())
+	if err != nil {
+		return nil, err
+	}
 
-	return printfFunc
+	ptr := cg.builder.NewGetElementPtr(
+		types.NewArray(uint64(len(strValue)), types.I8),
+		strGlobalDef,
+		constant.NewInt(types.I64, 0),
+		constant.NewInt(types.I64, 0),
+	)
+
+	return ptr, nil
 }
 
-func (cg *Codegen) setupTrueGlobalDef() *ir.Global {
-	trueStr := cg.module.NewGlobalDef(TRUE_GLOBAL_DEF_NAME, constant.NewCharArrayFromString("true\x00"))
-	trueStr.Immutable = true
-	trueStr.Linkage = enum.LinkagePrivate
-	cg.globalDefs[TRUE_GLOBAL_DEF_NAME] = trueStr
+func (cg *Codegen) setupPrintFunction() *ir.Func {
+	printFunc := cg.module.NewFunc("printf", types.I32, ir.NewParam("fmt", types.NewPointer(types.I8)))
+	printFunc.Sig.Variadic = true
+	cg.runtimeFuncs["print"] = printFunc
 
-	return trueStr
-}
-
-func (cg *Codegen) setupFalseStrGlobalDef() *ir.Global {
-	falseStr := cg.module.NewGlobalDef(FALSE_GLOBAL_DEF_NAME, constant.NewCharArrayFromString("false\x00"))
-	falseStr.Immutable = true
-	falseStr.Linkage = enum.LinkagePrivate
-	cg.globalDefs[FALSE_GLOBAL_DEF_NAME] = falseStr
-
-	return falseStr
+	return printFunc
 }
