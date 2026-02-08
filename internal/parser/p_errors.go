@@ -1,4 +1,4 @@
-package utils
+package parser
 
 import (
 	"fmt"
@@ -7,10 +7,6 @@ import (
 	"github.com/0xmukesh/coco/internal/ast"
 	"github.com/0xmukesh/coco/internal/tokens"
 )
-
-func TestMismatchErrorBuilder(testIdx int, v string, want, got any) string {
-	return fmt.Sprintf("[test #%d] %s mismatch. expected=%v, got=%v", testIdx, v, want, got)
-}
 
 func ParserErrorBuilder(token tokens.Token, message string) string {
 	return fmt.Sprintf("[line %d, column %d:%d] %s", token.Line, token.StartColumn, token.EndColumn, message)

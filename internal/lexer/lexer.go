@@ -32,6 +32,16 @@ func New(input string) *Lexer {
 	return l
 }
 
+func (l *Lexer) Lex() []tokens.Token {
+	var tks []tokens.Token
+
+	for tok := l.nextToken(); tok.Type != tokens.EOF; tok = l.nextToken() {
+		tks = append(tks, tok)
+	}
+
+	return tks
+}
+
 func (l *Lexer) newToken(tt tokens.TokenType, literal string) tokens.Token {
 	endColumn := l.column + len(literal)
 
@@ -376,14 +386,4 @@ func (l *Lexer) nextToken() tokens.Token {
 	l.readChar()
 	l.prevTokenType = tok.Type
 	return tok
-}
-
-func (l *Lexer) Lex() []tokens.Token {
-	var tks []tokens.Token
-
-	for tok := l.nextToken(); tok.Type != tokens.EOF; tok = l.nextToken() {
-		tks = append(tks, tok)
-	}
-
-	return tks
 }
