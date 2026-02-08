@@ -44,7 +44,7 @@ func (d *Driver) Lex() ([]tokens.Token, error) {
 
 	for _, t := range tks {
 		if t.Type == tokens.ILLEGAL {
-			return nil, fmt.Errorf("failed to lex source - %s", t.Literal)
+			return nil, fmt.Errorf("failed to lex source: %s", t.Literal)
 		}
 	}
 

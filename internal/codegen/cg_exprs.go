@@ -162,10 +162,10 @@ func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value
 		return cg.generatePrintExpression(expr)
 	case ast.BuiltinFuncExit:
 		return cg.generateExitExpression(expr)
-	case ast.BuiltinFuncInt:
-		return cg.generateIntExpression(expr)
-	case ast.BuiltinFuncFloat:
-		return cg.generateFloatExpression(expr)
+	case ast.BuiltinFuncIntCoercion:
+		return cg.generateIntCoercionExpression(expr)
+	case ast.BuiltinFuncFloatCoercion:
+		return cg.generateFloatCoercionExpression(expr)
 	default:
 		return nil, cg.propagateOrWrapError(nil, expr, "unsupported builtin function: %s", expr.Identifier)
 	}

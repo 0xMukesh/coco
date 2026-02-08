@@ -112,7 +112,7 @@ func (cg *Codegen) generateExitExpression(expr *ast.CallExpression) (value.Value
 	return nil, nil
 }
 
-func (cg *Codegen) generateIntExpression(expr *ast.CallExpression) (value.Value, error) {
+func (cg *Codegen) generateIntCoercionExpression(expr *ast.CallExpression) (value.Value, error) {
 	intArg := expr.Arguments[0]
 	val, err := cg.generateExpression(intArg)
 	if err != nil {
@@ -127,7 +127,7 @@ func (cg *Codegen) generateIntExpression(expr *ast.CallExpression) (value.Value,
 	return val, nil
 }
 
-func (cg *Codegen) generateFloatExpression(expr *ast.CallExpression) (value.Value, error) {
+func (cg *Codegen) generateFloatCoercionExpression(expr *ast.CallExpression) (value.Value, error) {
 	floatArg := expr.Arguments[0]
 	val, err := cg.generateExpression(floatArg)
 	if err != nil {

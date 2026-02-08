@@ -1,3 +1,1 @@
-print("hello, world!")
-exit(1)
-let a = "hello, world"
+print(1.5 * 3.8)
