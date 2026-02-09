@@ -73,30 +73,41 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) (cotype
 
 	// numeric types (int, float)
 	if leftTypeCategory == cotypes.CategoryNumeric && rightTypeCategory == cotypes.CategoryNumeric {
+		leftIsLiteral := tc.isLiteralExpression(expr.Left)
+		rightIsLiteral := tc.isLiteralExpression(expr.Right)
+
+		leftIsInt := leftType.Equals(cotypes.IntType{})
+		leftIsFloat := leftType.Equals(cotypes.FloatType{})
+		rightIsInt := rightType.Equals(cotypes.IntType{})
+		rightIsFloat := rightType.Equals(cotypes.FloatType{})
+
 		// arithmetic operators
 		if op == tokens.PLUS || op == tokens.MINUS || op == tokens.STAR || op == tokens.SLASH || op == tokens.DOUBLE_STAR {
-			// if it is numeric arithmetic and either one of them is float, then result type is float
-			// and the one which is integer is converted to float expression
-			if leftType.Equals(cotypes.FloatType{}) || rightType.Equals(cotypes.FloatType{}) {
-				if leftIntLit, ok := expr.Left.(*ast.IntegerExpression); ok {
-					expr.Left = &ast.FloatExpression{
-						Token: leftIntLit.Token,
-						Value: float64(leftIntLit.Value),
-						Type:  cotypes.FloatType{},
+			// if type of both the operands are the same, then the final type of the expression would be equal to the same type
+			if leftType.Equals(rightType) {
+				return expr.SetType(leftType), nil
+			}
+
+			// if left and right have different type i.e. int and float then the same type would be float
+			// and coercions would be used to convert int to float
+			if (leftIsInt && rightIsFloat) || (leftIsFloat && rightIsInt) {
+				if leftIsInt && leftIsLiteral {
+					if coercible, ok := expr.Left.(ast.CoercibleExpression); ok {
+						t := expr.SetType(cotypes.FloatType{})
+						coercible.SetCoercion(cotypes.FloatType{})
+						return t, nil
 					}
 				}
 
-				if rightIntLit, ok := expr.Right.(*ast.IntegerExpression); ok {
-					expr.Right = &ast.FloatExpression{
-						Token: rightIntLit.Token,
-						Value: float64(rightIntLit.Value),
-						Type:  cotypes.FloatType{},
+				if rightIsInt && rightIsLiteral {
+					if coercible, ok := expr.Right.(ast.CoercibleExpression); ok {
+						t := expr.SetType(cotypes.FloatType{})
+						coercible.SetCoercion(cotypes.FloatType{})
+						return t, nil
 					}
 				}
 
-				return expr.SetType(cotypes.FloatType{}), err
-			} else {
-				return expr.SetType(cotypes.IntType{}), err
+				return nil, tc.propagateOrWrapError(nil, expr, "cannot perform %s operation on %s and %s (implict coercion works for literals only)", op, leftType, rightType)
 			}
 		}
 

@@ -14,18 +14,18 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) {
+func (cg *Codegen) generateExpression(expr ast.Expression) (val value.Value, err error) {
 	if expr.GetType() == nil {
 		return nil, cg.propagateOrWrapError(nil, expr, "expression has no type")
 	}
 
 	switch e := expr.(type) {
 	case *ast.IntegerExpression:
-		return constant.NewInt(types.I64, e.Value), nil
+		val = constant.NewInt(types.I64, e.Value)
 	case *ast.FloatExpression:
-		return constant.NewFloat(types.Double, e.Value), nil
+		val = constant.NewFloat(types.Double, e.Value)
 	case *ast.BooleanExpression:
-		return constant.NewBool(e.Value), nil
+		val = constant.NewBool(e.Value)
 	case *ast.StringExpression:
 		return cg.generateStringExpression(e)
 	case *ast.IdentifierExpression:
@@ -39,6 +39,17 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (value.Value, error) 
 	default:
 		return nil, fmt.Errorf("unsupported expression type: %T", e)
 	}
+
+	if coercible, ok := expr.(ast.CoercibleExpression); ok {
+		if targetType := coercible.GetCoercion(); targetType != nil {
+			val, err = cg.applyCoercion(val, expr.GetType(), targetType)
+			if err != nil {
+				return nil, cg.propagateOrWrapError(err, expr, "failed to apply type coercion: %s", err.Error())
+			}
+		}
+	}
+
+	return val, nil
 }
 
 func (cg *Codegen) generateStringExpression(expr *ast.StringExpression) (value.Value, error) {

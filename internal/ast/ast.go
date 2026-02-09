@@ -21,6 +21,12 @@ type Expression interface {
 	SetType(cotypes.Type) cotypes.Type
 }
 
+type CoercibleExpression interface {
+	Expression
+	GetCoercion() cotypes.Type
+	SetCoercion(cotypes.Type)
+}
+
 type Statement interface {
 	Node
 	statementNode()
@@ -112,9 +118,10 @@ func (be *BooleanExpression) SetType(t cotypes.Type) cotypes.Type {
 }
 
 type IntegerExpression struct {
-	Token tokens.Token
-	Value int64
-	Type  cotypes.Type
+	Token    tokens.Token
+	Value    int64
+	Type     cotypes.Type
+	Coercion cotypes.Type
 }
 
 func (ie *IntegerExpression) expressionNode() {}
@@ -131,11 +138,18 @@ func (ie *IntegerExpression) SetType(t cotypes.Type) cotypes.Type {
 	ie.Type = t
 	return t
 }
+func (ie *IntegerExpression) GetCoercion() cotypes.Type {
+	return ie.Coercion
+}
+func (ie *IntegerExpression) SetCoercion(t cotypes.Type) {
+	ie.Coercion = t
+}
 
 type FloatExpression struct {
-	Token tokens.Token
-	Value float64
-	Type  cotypes.Type
+	Token    tokens.Token
+	Value    float64
+	Type     cotypes.Type
+	Coercion cotypes.Type
 }
 
 func (fe *FloatExpression) expressionNode() {}
@@ -151,6 +165,12 @@ func (fe *FloatExpression) GetType() cotypes.Type {
 func (fe *FloatExpression) SetType(t cotypes.Type) cotypes.Type {
 	fe.Type = t
 	return t
+}
+func (ie *FloatExpression) GetCoercion() cotypes.Type {
+	return ie.Coercion
+}
+func (ie *FloatExpression) SetCoercion(t cotypes.Type) {
+	ie.Coercion = t
 }
 
 // <prefix><expression>

@@ -5,17 +5,31 @@ import (
 	"maps"
 	"slices"
 
+	cotypes "github.com/0xmukesh/coco/internal/types"
 	"github.com/0xmukesh/coco/internal/utils"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
 	"github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/value"
 )
 
 var (
 	TRUE_STR_GLOBAL_DEF_NAME  = "__coco_true"
 	FALSE_STR_GLOBAL_DEF_NAME = "__coco_false"
 )
+
+func (cg *Codegen) applyCoercion(val value.Value, fromType, targetType cotypes.Type) (value.Value, error) {
+	if fromType.Equals(cotypes.IntType{}) && targetType.Equals(cotypes.FloatType{}) {
+		return cg.builder.NewSIToFP(val, types.Double), nil
+	}
+
+	if fromType.Equals(cotypes.FloatType{}) && targetType.Equals(cotypes.IntType{}) {
+		return cg.builder.NewFPToSI(val, types.I64), nil
+	}
+
+	return val, fmt.Errorf("unsupported type coercion from %s to %s", fromType, targetType)
+}
 
 func (cg *Codegen) getOrCreateStringLiteral(str string, name string) *ir.Global {
 	// before passing string literals to llvm, null terminator is added to the end of the string
