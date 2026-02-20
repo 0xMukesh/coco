@@ -3,6 +3,7 @@ package typechecker
 import (
 	"github.com/0xmukesh/coco/internal/ast"
 	"github.com/0xmukesh/coco/internal/env"
+	cotypes "github.com/0xmukesh/coco/internal/types"
 )
 
 func (tc *TypeChecker) checkStatement(stmt ast.Statement) (err error) {
@@ -19,6 +20,8 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) (err error) {
 	case *ast.ReturnStatement:
 		_, err = tc.checkExpression(s.Expr)
 		return err
+	case *ast.WhileStatement:
+		return tc.checkWhileStatement(s)
 	default:
 		return tc.propagateOrWrapError(nil, s, "unknown statement type: %T", s)
 	}
@@ -64,5 +67,22 @@ func (tc *TypeChecker) checkBlockStatement(stmt *ast.BlockStatement) error {
 	}
 
 	tc.env = tc.env.Parent()
+	return nil
+}
+
+func (tc *TypeChecker) checkWhileStatement(stmt *ast.WhileStatement) error {
+	conditionType, err := tc.checkExpression(stmt.Condition)
+	if err != nil {
+		return tc.propagateOrWrapError(err, stmt.Condition, "failed to typecheck expression: %s", err.Error())
+	}
+
+	if !conditionType.Equals(cotypes.BoolType{}) {
+		return tc.propagateOrWrapError(nil, stmt.Condition, "non-boolean expression in while condition")
+	}
+
+	if err := tc.checkStatement(stmt.Body); err != nil {
+		return tc.propagateOrWrapError(err, stmt.Body, "failed to typecheck statement: %s", err.Error())
+	}
+
 	return nil
 }

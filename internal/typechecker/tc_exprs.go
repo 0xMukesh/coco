@@ -191,6 +191,14 @@ func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (cotypes.Type, 
 		}
 	}
 
+	if conReturnType == nil && altReturnType == nil {
+		return cotypes.VoidType{}, nil
+	}
+
+	if conReturnType.Equals(altReturnType) {
+		return conReturnType, nil
+	}
+
 	if conReturnType != nil && altReturnType != nil && !conReturnType.Equals(altReturnType) {
 		conReturnTypeCategory := cotypes.GetTypeCategory(conReturnType)
 		altReturnTypeCategory := cotypes.GetTypeCategory(altReturnType)
@@ -206,10 +214,6 @@ func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (cotypes.Type, 
 
 			return conReturnType, nil
 		}
-	}
-
-	if conReturnType == nil && altReturnType == nil {
-		return cotypes.VoidType{}, nil
 	}
 
 	return nil, tc.propagateOrWrapError(nil, expr, "return types of if and else blocks need to be equal. got %q from if-block and %q from else-block", conReturnType, altReturnType)

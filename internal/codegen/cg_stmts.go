@@ -20,6 +20,8 @@ func (cg *Codegen) generateStatement(stmt ast.Statement) (err error) {
 		return cg.generateBlockStatement(s)
 	case *ast.ReturnStatement:
 		return cg.generateReturnStatement(s)
+	case *ast.WhileStatement:
+		return cg.generateWhileStatement(s)
 	default:
 		return fmt.Errorf("unsupported statement type: %T", s)
 	}
@@ -91,5 +93,30 @@ func (cg *Codegen) generateReturnStatement(stmt *ast.ReturnStatement) error {
 	}
 
 	cg.blockReturnValue = val
+	return nil
+}
+
+func (cg *Codegen) generateWhileStatement(stmt *ast.WhileStatement) error {
+	conditionBlock := cg.mainFn.NewBlock("")
+	bodyBlock := cg.mainFn.NewBlock("")
+	exitBlock := cg.mainFn.NewBlock("")
+
+	cg.builder.NewBr(conditionBlock)
+
+	cg.builder = conditionBlock
+	val, err := cg.generateExpression(stmt.Condition)
+	if err != nil {
+		return cg.propagateOrWrapError(err, stmt.Condition, "failed to codegen while statement's condition: %s", err.Error())
+	}
+	cg.builder.NewCondBr(val, bodyBlock, exitBlock)
+
+	cg.builder = bodyBlock
+	if err := cg.generateStatement(stmt.Body); err != nil {
+		return cg.propagateOrWrapError(err, stmt.Body, "failed to codegen while statement's body: %s", err.Error())
+	}
+	cg.builder.NewBr(conditionBlock)
+
+	cg.builder = exitBlock
+
 	return nil
 }
