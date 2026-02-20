@@ -36,6 +36,8 @@ func (cg *Codegen) generateExpression(expr ast.Expression) (val value.Value, err
 		return cg.generateCallExpression(e)
 	case *ast.IfExpression:
 		return cg.generateIfExpression(e)
+	case *ast.GroupedExpression:
+		return cg.generateExpression(e.Expr)
 	default:
 		return nil, fmt.Errorf("unsupported expression type: %T", e)
 	}

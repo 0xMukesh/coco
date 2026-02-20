@@ -163,8 +163,10 @@ func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (cotypes.Type, 
 	}
 
 	var (
-		consequenceReturnType cotypes.Type = nil
-		alternativeReturnType cotypes.Type = nil
+		conReturnType cotypes.Type         = nil
+		altReturnType cotypes.Type         = nil
+		conReturnStmt *ast.ReturnStatement = nil
+		altReturnStmt *ast.ReturnStatement = nil
 	)
 
 	for _, stmt := range expr.Consequence.Statements {
@@ -172,7 +174,8 @@ func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (cotypes.Type, 
 		returnStmt, ok := stmt.(*ast.ReturnStatement)
 
 		if ok {
-			consequenceReturnType = returnStmt.Expr.GetType()
+			conReturnType = returnStmt.Expr.GetType()
+			conReturnStmt = returnStmt
 		}
 	}
 
@@ -182,18 +185,32 @@ func (tc *TypeChecker) checkIfExpression(expr *ast.IfExpression) (cotypes.Type, 
 			returnStmt, ok := stmt.(*ast.ReturnStatement)
 
 			if ok {
-				alternativeReturnType = returnStmt.Expr.GetType()
+				altReturnType = returnStmt.Expr.GetType()
+				altReturnStmt = returnStmt
 			}
 		}
 	}
 
-	if consequenceReturnType != nil && alternativeReturnType != nil && consequenceReturnType.Equals(alternativeReturnType) {
-		return consequenceReturnType, nil
+	if conReturnType != nil && altReturnType != nil && !conReturnType.Equals(altReturnType) {
+		conReturnTypeCategory := cotypes.GetTypeCategory(conReturnType)
+		altReturnTypeCategory := cotypes.GetTypeCategory(altReturnType)
+
+		if conReturnTypeCategory == cotypes.CategoryNumeric && altReturnTypeCategory == cotypes.CategoryNumeric && !conReturnType.Equals(altReturnType) {
+			if conReturnType.Equals(cotypes.IntType{}) {
+				conReturnStmt.Expr.(*ast.IntegerExpression).SetCoercion(cotypes.FloatType{})
+			}
+
+			if altReturnType.Equals(cotypes.IntType{}) {
+				altReturnStmt.Expr.(*ast.IntegerExpression).SetCoercion(cotypes.FloatType{})
+			}
+
+			return conReturnType, nil
+		}
 	}
 
-	if consequenceReturnType == nil && alternativeReturnType == nil {
+	if conReturnType == nil && altReturnType == nil {
 		return cotypes.VoidType{}, nil
 	}
 
-	return nil, tc.propagateOrWrapError(nil, expr, "return types of if and else blocks need to be equal. got %q from if-block and %q from else-block", consequenceReturnType, alternativeReturnType)
+	return nil, tc.propagateOrWrapError(nil, expr, "return types of if and else blocks need to be equal. got %q from if-block and %q from else-block", conReturnType, altReturnType)
 }
