@@ -11,6 +11,7 @@ import (
 
 type Node interface {
 	TokenLiteral() string
+	Location() int
 	String() string
 }
 
@@ -74,6 +75,9 @@ func (ie *IdentifierExpression) SetType(t cotypes.Type) cotypes.Type {
 	ie.Type = t
 	return t
 }
+func (ie *IdentifierExpression) Location() int {
+	return ie.Token.Line
+}
 
 type StringExpression struct {
 	Token tokens.Token
@@ -84,6 +88,9 @@ type StringExpression struct {
 func (se *StringExpression) expressionNode() {}
 func (se *StringExpression) TokenLiteral() string {
 	return se.Token.Literal
+}
+func (se *StringExpression) Location() int {
+	return se.Token.Line
 }
 func (se *StringExpression) String() string {
 	return se.Value
@@ -106,6 +113,9 @@ func (be *BooleanExpression) expressionNode() {}
 func (be *BooleanExpression) TokenLiteral() string {
 	return be.Token.Literal
 }
+func (be *BooleanExpression) Location() int {
+	return be.Token.Line
+}
 func (be *BooleanExpression) String() string {
 	return fmt.Sprint(be.Value)
 }
@@ -127,6 +137,9 @@ type IntegerExpression struct {
 func (ie *IntegerExpression) expressionNode() {}
 func (ie *IntegerExpression) TokenLiteral() string {
 	return ie.Token.Literal
+}
+func (ie *IntegerExpression) Location() int {
+	return ie.Token.Line
 }
 func (ie *IntegerExpression) String() string {
 	return fmt.Sprint(ie.Value)
@@ -156,6 +169,9 @@ func (fe *FloatExpression) expressionNode() {}
 func (fe *FloatExpression) TokenLiteral() string {
 	return fe.Token.Literal
 }
+func (fe *FloatExpression) Location() int {
+	return fe.Token.Line
+}
 func (fe *FloatExpression) String() string {
 	return fmt.Sprint(fe.Value)
 }
@@ -166,11 +182,11 @@ func (fe *FloatExpression) SetType(t cotypes.Type) cotypes.Type {
 	fe.Type = t
 	return t
 }
-func (ie *FloatExpression) GetCoercion() cotypes.Type {
-	return ie.Coercion
+func (fe *FloatExpression) GetCoercion() cotypes.Type {
+	return fe.Coercion
 }
-func (ie *FloatExpression) SetCoercion(t cotypes.Type) {
-	ie.Coercion = t
+func (fe *FloatExpression) SetCoercion(t cotypes.Type) {
+	fe.Coercion = t
 }
 
 // <prefix><expression>
@@ -183,6 +199,9 @@ type UnaryExpression struct {
 func (ue *UnaryExpression) expressionNode() {}
 func (ue *UnaryExpression) TokenLiteral() string {
 	return ue.Token.Literal
+}
+func (ue *UnaryExpression) Location() int {
+	return ue.Token.Line
 }
 func (ue *UnaryExpression) String() string {
 	var out bytes.Buffer
@@ -212,6 +231,9 @@ func (be *BinaryExpression) expressionNode() {}
 func (be *BinaryExpression) TokenLiteral() string {
 	return be.Operator.Literal
 }
+func (be *BinaryExpression) Location() int {
+	return be.Operator.Line
+}
 func (be *BinaryExpression) String() string {
 	var out bytes.Buffer
 
@@ -239,6 +261,9 @@ type GroupedExpression struct {
 func (ge *GroupedExpression) expressionNode() {}
 func (ge *GroupedExpression) TokenLiteral() string {
 	return ge.Token.Literal
+}
+func (ge *GroupedExpression) Location() int {
+	return ge.Token.Line
 }
 func (ge *GroupedExpression) String() string {
 	var out bytes.Buffer
@@ -270,6 +295,9 @@ type IfExpression struct {
 func (ie *IfExpression) expressionNode() {}
 func (ie *IfExpression) TokenLiteral() string {
 	return ie.Token.Literal
+}
+func (ie *IfExpression) Location() int {
+	return ie.Token.Line
 }
 func (ie *IfExpression) String() string {
 	var out bytes.Buffer
@@ -305,6 +333,9 @@ type FunctionExpression struct {
 func (fe *FunctionExpression) expressionNode() {}
 func (fe *FunctionExpression) TokenLiteral() string {
 	return fe.Token.Literal
+}
+func (fe *FunctionExpression) Location() int {
+	return fe.Token.Line
 }
 func (fe *FunctionExpression) String() string {
 	var out bytes.Buffer
@@ -345,6 +376,9 @@ func (ce *CallExpression) expressionNode() {}
 func (ce *CallExpression) TokenLiteral() string {
 	return ce.Token.Literal
 }
+func (ce *CallExpression) Location() int {
+	return ce.Token.Line
+}
 func (ce *CallExpression) String() string {
 	var out bytes.Buffer
 
@@ -379,6 +413,9 @@ func (ls *LetStatement) statementNode() {}
 func (ls *LetStatement) TokenLiteral() string {
 	return ls.Token.Literal
 }
+func (ls *LetStatement) Location() int {
+	return ls.Token.Line
+}
 func (ls *LetStatement) String() string {
 	var out bytes.Buffer
 
@@ -404,6 +441,9 @@ func (as *AssignmentStatement) statementNode() {}
 func (as *AssignmentStatement) TokenLiteral() string {
 	return as.Token.Literal
 }
+func (as *AssignmentStatement) Location() int {
+	return as.Token.Line
+}
 func (as *AssignmentStatement) String() string {
 	var out bytes.Buffer
 
@@ -423,6 +463,9 @@ type ReturnStatement struct {
 func (rs *ReturnStatement) statementNode() {}
 func (rs *ReturnStatement) TokenLiteral() string {
 	return rs.Token.Literal
+}
+func (rs *ReturnStatement) Location() int {
+	return rs.Token.Line
 }
 func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
@@ -447,6 +490,9 @@ type WhileStatement struct {
 func (ws *WhileStatement) statementNode() {}
 func (ws *WhileStatement) TokenLiteral() string {
 	return ws.Token.Literal
+}
+func (ws *WhileStatement) Location() int {
+	return ws.Token.Line
 }
 func (ws *WhileStatement) String() string {
 	var out bytes.Buffer
@@ -473,6 +519,9 @@ type ForStatement struct {
 func (fs *ForStatement) statementNode() {}
 func (fs *ForStatement) TokenLiteral() string {
 	return fs.Token.Literal
+}
+func (fs *ForStatement) Location() int {
+	return fs.Token.Line
 }
 func (fs *ForStatement) String() string {
 	var out bytes.Buffer
@@ -513,6 +562,9 @@ func (bs *BlockStatement) statementNode() {}
 func (bs *BlockStatement) TokenLiteral() string {
 	return bs.Token.Literal
 }
+func (bs *BlockStatement) Location() int {
+	return bs.Token.Line
+}
 func (bs *BlockStatement) String() string {
 	var out bytes.Buffer
 
@@ -535,6 +587,9 @@ type ExpressionStatement struct {
 func (es *ExpressionStatement) statementNode() {}
 func (es *ExpressionStatement) TokenLiteral() string {
 	return es.Token.Literal
+}
+func (es *ExpressionStatement) Location() int {
+	return es.Token.Line
 }
 func (es *ExpressionStatement) String() string {
 	return es.Expr.String()

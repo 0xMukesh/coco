@@ -13,9 +13,9 @@ type CodegenError struct {
 
 func (e *CodegenError) Error() string {
 	if e.node != nil {
-		return fmt.Sprintf("codegen error at %q: %s", e.node, e.message)
+		return fmt.Sprintf("[line: %d] codegen error at %s: %s", e.node.Location(), e.node, e.message)
 	} else {
-		return fmt.Sprintf("codegen error: %s", e.message)
+		return fmt.Sprintf("[line: %d] codegen error: %s", e.node.Location(), e.message)
 	}
 }
 

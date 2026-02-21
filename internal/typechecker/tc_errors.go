@@ -13,9 +13,9 @@ type TypeCheckerError struct {
 
 func (e *TypeCheckerError) Error() string {
 	if e.node != nil {
-		return fmt.Sprintf("typechecker error at %q: %s", e.node, e.message)
+		return fmt.Sprintf("[line: %d] typechecker error at %s: %s", e.node.Location(), e.node, e.message)
 	} else {
-		return fmt.Sprintf("typechecker error: %s", e.message)
+		return fmt.Sprintf("[line: %d] typechecker error: %s", e.node.Location(), e.message)
 	}
 }
 

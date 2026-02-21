@@ -1,10 +1,6 @@
 package cli
 
 import (
-	"fmt"
-	"log"
-	"os"
-
 	"github.com/0xmukesh/coco/internal/driver"
 	"github.com/spf13/cobra"
 )
@@ -39,8 +35,7 @@ var typeCheckCmd = &cobra.Command{
 
 func Run() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		printErrAndExit(err.Error())
 	}
 }
 
@@ -54,11 +49,11 @@ func buildSource(cmd *cobra.Command, args []string) {
 	sourceFilePath := args[0]
 	d, err := driver.NewDriverFromFile(sourceFilePath)
 	if err != nil {
-		log.Fatal(err)
+		printErrAndExit(err.Error())
 	}
 
 	if err := d.Pipeline(outputFilePath, emitIr); err != nil {
-		log.Fatal(err)
+		printErrAndExit(err.Error())
 	}
 }
 
@@ -66,20 +61,20 @@ func typeCheckSource(cmd *cobra.Command, args []string) {
 	sourceFilePath := args[0]
 	d, err := driver.NewDriverFromFile(sourceFilePath)
 	if err != nil {
-		log.Fatal(err)
+		printErrAndExit(err.Error())
 	}
 
 	tks, err := d.Lex()
 	if err != nil {
-		log.Fatal(err)
+		printErrAndExit(err.Error())
 	}
 
 	ast, err := d.Parse(tks)
 	if err != nil {
-		log.Fatal(err)
+		printErrAndExit(err.Error())
 	}
 
 	if err := d.TypeCheck(ast); err != nil {
-		log.Fatal(err)
+		printErrAndExit(err.Error())
 	}
 }
