@@ -38,7 +38,7 @@ func (cg *Codegen) generateLetStatement(stmt *ast.LetStatement) error {
 
 	initValue, err := cg.generateExpression(stmt.Value)
 	if err != nil {
-		return cg.propagateOrWrapError(err, stmt, "failed to generate value for let statement: %s", err.Error())
+		return cg.propagateOrWrapError(err, stmt.Value, "failed to generate value for let statement: %s", err.Error())
 	}
 
 	alloca := cg.builder.NewAlloca(initValue.Type())
@@ -55,17 +55,12 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 	varName := stmt.Identifier.String()
 	variable, exists := cg.scope.Get(varName)
 	if !exists {
-		return cg.propagateOrWrapError(nil, stmt, "cannot assign to undefined variable: %s", varName)
+		return cg.propagateOrWrapError(nil, stmt.Identifier, "cannot assign to undefined variable: %s", varName)
 	}
 
 	newValue, err := cg.generateExpression(stmt.Value)
 	if err != nil {
-		return cg.propagateOrWrapError(err, stmt, "failed to codegen value for assignment statement: %s", err.Error())
-	}
-	newType := stmt.Value.GetType()
-
-	if !variable.typ.Equals(newType) {
-		return cg.propagateOrWrapError(nil, stmt, "cannot assign %q type to variable of type %q", newType, variable.typ)
+		return cg.propagateOrWrapError(err, stmt.Value, "failed to codegen value for assignment statement: %s", err.Error())
 	}
 
 	cg.builder.NewStore(newValue, variable.alloca)
@@ -89,7 +84,7 @@ func (cg *Codegen) generateBlockStatement(stmt *ast.BlockStatement) error {
 func (cg *Codegen) generateReturnStatement(stmt *ast.ReturnStatement) error {
 	val, err := cg.generateExpression(stmt.Expr)
 	if err != nil {
-		return cg.propagateOrWrapError(err, stmt, "failed to codegen value for return statement: %s", err.Error())
+		return cg.propagateOrWrapError(err, stmt.Expr, "failed to codegen value for return statement: %s", err.Error())
 	}
 
 	cg.blockReturnValue = val

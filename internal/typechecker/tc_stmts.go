@@ -30,12 +30,16 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) (err error) {
 func (tc *TypeChecker) checkLetStatement(stmt *ast.LetStatement) error {
 	varName := stmt.Identifier.String()
 	if tc.env.Has(varName) {
-		return tc.propagateOrWrapError(nil, stmt, "cannot redeclare variable: %s", varName)
+		return tc.propagateOrWrapError(nil, stmt.Identifier, "cannot redeclare variable: %s", varName)
 	}
 
 	varType, err := tc.checkExpression(stmt.Value)
 	if err != nil {
-		return tc.propagateOrWrapError(err, stmt, "failed to typecheck let statement value: %s", err.Error())
+		return tc.propagateOrWrapError(err, stmt.Value, "failed to typecheck let statement value: %s", err.Error())
+	}
+
+	if varType.Equals(cotypes.VoidType{}) {
+		return tc.propagateOrWrapError(err, stmt.Identifier, "cannot bind variable %q to 'void' type", varName)
 	}
 
 	tc.env.Set(varName, varType)
@@ -44,14 +48,18 @@ func (tc *TypeChecker) checkLetStatement(stmt *ast.LetStatement) error {
 
 func (tc *TypeChecker) checkAssignmentStatement(stmt *ast.AssignmentStatement) error {
 	varName := stmt.Identifier.String()
-	_, exists := tc.env.Get(varName)
+	originalType, exists := tc.env.Get(varName)
 	if !exists {
-		return tc.propagateOrWrapError(nil, stmt, "unknown identifier: %s", varName)
+		return tc.propagateOrWrapError(nil, stmt.Identifier, "unknown identifier: %s", varName)
 	}
 
-	_, err := tc.checkExpression(stmt.Value)
+	newType, err := tc.checkExpression(stmt.Value)
 	if err != nil {
-		return tc.propagateOrWrapError(err, stmt, "failed to typecheck assignment statement value: %s", err.Error())
+		return tc.propagateOrWrapError(err, stmt.Value, "failed to typecheck assignment statement value: %s", err.Error())
+	}
+
+	if !originalType.Equals(newType) {
+		return tc.propagateOrWrapError(err, stmt.Value, "cannot assign value of type %q to value of type %q", originalType, newType)
 	}
 
 	return nil

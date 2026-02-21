@@ -37,7 +37,12 @@ func (cg *Codegen) getOrCreateStringLiteral(str string, name string) *ir.Global 
 
 	globalDefs := slices.Collect(maps.Values(cg.globalDefs))
 	strIdx := slices.IndexFunc(globalDefs, func(e *ir.Global) bool {
-		return e.Init.Ident() == str
+		llvmParsedStr, err := utils.LlvmStringToGoLiteral(e.Init.Ident())
+		if err != nil {
+			return false
+		}
+
+		return llvmParsedStr == str
 	})
 
 	if strIdx != -1 {
@@ -45,7 +50,6 @@ func (cg *Codegen) getOrCreateStringLiteral(str string, name string) *ir.Global 
 	} else {
 		if name == "" {
 			name = fmt.Sprintf(".str.%d", cg.nameCounter)
-
 		}
 
 		globalDef := cg.module.NewGlobalDef(name, constant.NewCharArrayFromString(str))

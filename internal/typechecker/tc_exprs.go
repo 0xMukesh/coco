@@ -73,8 +73,8 @@ func (tc *TypeChecker) checkBinaryExpression(expr *ast.BinaryExpression) (cotype
 
 	// numeric types (int, float)
 	if leftTypeCategory == cotypes.CategoryNumeric && rightTypeCategory == cotypes.CategoryNumeric {
-		leftIsLiteral := tc.isLiteralExpression(expr.Left)
-		rightIsLiteral := tc.isLiteralExpression(expr.Right)
+		leftIsLiteral := ast.IsLiteralExpression(expr.Left)
+		rightIsLiteral := ast.IsLiteralExpression(expr.Right)
 
 		leftIsInt := leftType.Equals(cotypes.IntType{})
 		leftIsFloat := leftType.Equals(cotypes.FloatType{})

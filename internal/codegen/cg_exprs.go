@@ -60,8 +60,6 @@ func (cg *Codegen) generateStringExpression(expr *ast.StringExpression) (value.V
 		return nil, cg.propagateOrWrapError(nil, expr, "invalid string: %s", err.Error())
 	}
 
-	str += "\x00"
-
 	return cg.getOrCreateStringLiteral(str, ""), nil
 }
 
@@ -77,12 +75,12 @@ func (cg *Codegen) generateIdentifierExpression(expr *ast.IdentifierExpression) 
 func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.Value, error) {
 	left, err := cg.generateExpression(expr.Left)
 	if err != nil {
-		return nil, cg.propagateOrWrapError(err, expr, "failed to codegen left operand: %s", err.Error())
+		return nil, cg.propagateOrWrapError(err, expr.Left, "failed to codegen left operand: %s", err.Error())
 	}
 
 	right, err := cg.generateExpression(expr.Right)
 	if err != nil {
-		return nil, cg.propagateOrWrapError(err, expr, "failed to codegen right operand: %s", err.Error())
+		return nil, cg.propagateOrWrapError(err, expr.Right, "failed to codegen right operand: %s", err.Error())
 	}
 
 	// integer arithemtic
@@ -97,7 +95,7 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		case tokens.SLASH:
 			return cg.builder.NewSDiv(left, right), nil
 		default:
-			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation", expr.Operator)
+			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation on %q and %q types", expr.Operator, left.Type(), right.Type())
 		}
 	}
 
@@ -113,7 +111,7 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		case tokens.SLASH:
 			return cg.builder.NewFDiv(left, right), nil
 		default:
-			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation", expr.Operator.Type)
+			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation on %q and %q types", expr.Operator.Type, left.Type(), right.Type())
 		}
 	}
 
@@ -133,7 +131,7 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		case tokens.NOT_EQUALS:
 			return cg.builder.NewICmp(enum.IPredNE, left, right), nil
 		default:
-			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation", expr.Operator.Type)
+			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation on %q and %q types", expr.Operator.Type, left.Type(), right.Type())
 		}
 	}
 
@@ -153,11 +151,11 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		case tokens.NOT_EQUALS:
 			return cg.builder.NewFCmp(enum.FPredONE, left, right), nil
 		default:
-			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation", expr.Operator.Type)
+			return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation on %q and %q types", expr.Operator.Type, left.Type(), right.Type())
 		}
 	}
 
-	return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation", expr.Operator.Type)
+	return nil, cg.propagateOrWrapError(nil, expr, "cannot perform %q operation on %q and %q types", expr.Operator.Type, left.Type(), right.Type())
 }
 
 func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value, error) {
@@ -187,7 +185,7 @@ func (cg *Codegen) generateCallExpression(expr *ast.CallExpression) (value.Value
 func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, error) {
 	condition, err := cg.generateExpression(expr.Condition)
 	if err != nil {
-		return nil, cg.propagateOrWrapError(err, expr, "failed to codegen if-branch condition: %s", err.Error())
+		return nil, cg.propagateOrWrapError(err, expr.Condition, "failed to codegen if-branch condition: %s", err.Error())
 	}
 
 	trueBlock := cg.mainFn.NewBlock("")
@@ -199,7 +197,7 @@ func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, er
 	// true block
 	cg.builder = trueBlock
 	if err := cg.generateStatement(expr.Consequence); err != nil {
-		return nil, cg.propagateOrWrapError(err, expr, "failed to codegen if-branch: %s", err.Error())
+		return nil, cg.propagateOrWrapError(err, expr.Consequence, "failed to codegen if-branch: %s", err.Error())
 	}
 	cg.builder.NewBr(mergeBlock)
 	trueVal := cg.blockReturnValue
@@ -207,7 +205,7 @@ func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, er
 	// false block
 	cg.builder = falseBlock
 	if err := cg.generateStatement(expr.Alternative); err != nil {
-		return nil, cg.propagateOrWrapError(err, expr, "failed to codegen else-branch: %s", err.Error())
+		return nil, cg.propagateOrWrapError(err, expr.Alternative, "failed to codegen else-branch: %s", err.Error())
 	}
 	cg.builder.NewBr(mergeBlock)
 	falseVal := cg.blockReturnValue

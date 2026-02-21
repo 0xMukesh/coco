@@ -402,6 +402,14 @@ func (ce *CallExpression) SetType(t cotypes.Type) cotypes.Type {
 	return t
 }
 
+// <condition> ? <consquence> : <alternative>
+type TernaryExpression struct {
+	Token       tokens.Token
+	Condition   Expression
+	Consequence Expression
+	Alternative Expression
+}
+
 // let <identifier> = <value>
 type LetStatement struct {
 	Token      tokens.Token

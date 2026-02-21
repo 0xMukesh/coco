@@ -90,3 +90,12 @@ func NewIfExpr(condition Expression, consequence []Statement, alternative []Stat
 
 	return expr
 }
+
+func IsLiteralExpression(expr Expression) bool {
+	switch expr.(type) {
+	case *IntegerExpression, *FloatExpression, *BooleanExpression, *StringExpression:
+		return true
+	default:
+		return false
+	}
+}
