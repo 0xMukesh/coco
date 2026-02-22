@@ -83,6 +83,16 @@ func (cg *Codegen) generateBinaryExpression(expr *ast.BinaryExpression) (value.V
 		return nil, cg.propagateOrWrapError(err, expr.Right, "failed to codegen right operand: %s", err.Error())
 	}
 
+	// boolean comparision
+	if expr.GetType().Equals(cotypes.BoolType{}) {
+		switch expr.Operator.Type {
+		case tokens.EQUALS:
+			return cg.builder.NewICmp(enum.IPredEQ, left, right), nil
+		case tokens.NOT_EQUALS:
+			return cg.builder.NewICmp(enum.IPredNE, left, right), nil
+		}
+	}
+
 	// integer arithemtic
 	if expr.GetType().Equals(cotypes.IntType{}) {
 		switch expr.Operator.Type {
@@ -230,7 +240,6 @@ func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, er
 	}
 
 	cg.builder = mergeBlock
-
 	if expr.Alternative != nil && trueReturnVal != nil && falseReturnVal != nil && !allTerminated {
 		cg.blockReturnValue = mergeBlock.NewPhi(
 			ir.NewIncoming(trueReturnVal, trueBlock),

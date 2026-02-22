@@ -23,7 +23,9 @@ func (cg *Codegen) generateStatement(stmt ast.Statement) (err error) {
 	case *ast.WhileStatement:
 		return cg.generateWhileStatement(s)
 	case *ast.BreakStatement:
-		return cg.generateBreakStatement(s)
+		return cg.generateBreakStatement()
+	case *ast.ContinueStatement:
+		return cg.generateContinueStatement()
 	default:
 		return fmt.Errorf("unsupported statement type: %T", s)
 	}
@@ -102,7 +104,12 @@ func (cg *Codegen) generateWhileStatement(stmt *ast.WhileStatement) error {
 	bodyBlock := cg.mainFn.NewBlock("")
 	exitBlock := cg.mainFn.NewBlock("")
 
+	prevExitBlock := cg.loopExitBlock
+	prevCondBlock := cg.loopConditionBlock
+
 	cg.loopExitBlock = exitBlock
+	cg.loopConditionBlock = conditionBlock
+
 	cg.builder.NewBr(conditionBlock)
 
 	cg.builder = conditionBlock
@@ -121,11 +128,19 @@ func (cg *Codegen) generateWhileStatement(stmt *ast.WhileStatement) error {
 		cg.builder.NewBr(conditionBlock)
 	}
 
+	cg.loopExitBlock = prevExitBlock
+	cg.loopConditionBlock = prevCondBlock
+
 	cg.builder = exitBlock
 	return nil
 }
 
-func (cg *Codegen) generateBreakStatement(stmt *ast.BreakStatement) error {
+func (cg *Codegen) generateBreakStatement() error {
 	cg.builder.NewBr(cg.loopExitBlock)
+	return nil
+}
+
+func (cg *Codegen) generateContinueStatement() error {
+	cg.builder.NewBr(cg.loopConditionBlock)
 	return nil
 }

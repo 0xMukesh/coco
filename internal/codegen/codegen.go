@@ -25,6 +25,8 @@ type Codegen struct {
 	blockReturnValue value.Value
 	// used for codegen of break statements
 	loopExitBlock *ir.Block
+	// use for codegen of continue statements
+	loopConditionBlock *ir.Block
 
 	scope        Scope
 	runtimeFuncs map[string]*ir.Func

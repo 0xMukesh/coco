@@ -522,6 +522,22 @@ func (bs *BreakStatement) String() string {
 	return bs.TokenLiteral()
 }
 
+// continue
+type ContinueStatement struct {
+	Token tokens.Token
+}
+
+func (cs *ContinueStatement) statementNode() {}
+func (cs *ContinueStatement) TokenLiteral() string {
+	return cs.Token.Literal
+}
+func (cs *ContinueStatement) Location() int {
+	return cs.Token.Line
+}
+func (cs *ContinueStatement) String() string {
+	return cs.TokenLiteral()
+}
+
 // for ( ?(<initialization>); ?(<condition>); ?(<update>) ) { <body> }
 // ?(...) = optional
 type ForStatement struct {
