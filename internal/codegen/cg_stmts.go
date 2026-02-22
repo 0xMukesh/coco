@@ -22,6 +22,8 @@ func (cg *Codegen) generateStatement(stmt ast.Statement) (err error) {
 		return cg.generateReturnStatement(s)
 	case *ast.WhileStatement:
 		return cg.generateWhileStatement(s)
+	case *ast.BreakStatement:
+		return cg.generateBreakStatement(s)
 	default:
 		return fmt.Errorf("unsupported statement type: %T", s)
 	}
@@ -67,20 +69,6 @@ func (cg *Codegen) generateAssignmentStatement(stmt *ast.AssignmentStatement) er
 	return nil
 }
 
-func (cg *Codegen) generateBlockStatement(stmt *ast.BlockStatement) error {
-	previousScope := cg.scope
-	cg.scope = env.NewEnvironmentWithParent(previousScope)
-
-	for _, s := range stmt.Statements {
-		if err := cg.generateStatement(s); err != nil {
-			return err
-		}
-	}
-
-	cg.scope = previousScope
-	return nil
-}
-
 func (cg *Codegen) generateReturnStatement(stmt *ast.ReturnStatement) error {
 	val, err := cg.generateExpression(stmt.Expr)
 	if err != nil {
@@ -91,11 +79,30 @@ func (cg *Codegen) generateReturnStatement(stmt *ast.ReturnStatement) error {
 	return nil
 }
 
+func (cg *Codegen) generateBlockStatement(stmt *ast.BlockStatement) error {
+	previousScope := cg.scope
+	cg.scope = env.NewEnvironmentWithParent(previousScope)
+
+	for _, s := range stmt.Statements {
+		if err := cg.generateStatement(s); err != nil {
+			return err
+		}
+
+		if cg.builder.Term != nil {
+			break
+		}
+	}
+
+	cg.scope = previousScope
+	return nil
+}
+
 func (cg *Codegen) generateWhileStatement(stmt *ast.WhileStatement) error {
 	conditionBlock := cg.mainFn.NewBlock("")
 	bodyBlock := cg.mainFn.NewBlock("")
 	exitBlock := cg.mainFn.NewBlock("")
 
+	cg.loopExitBlock = exitBlock
 	cg.builder.NewBr(conditionBlock)
 
 	cg.builder = conditionBlock
@@ -109,9 +116,16 @@ func (cg *Codegen) generateWhileStatement(stmt *ast.WhileStatement) error {
 	if err := cg.generateStatement(stmt.Body); err != nil {
 		return cg.propagateOrWrapError(err, stmt.Body, "failed to codegen while statement's body: %s", err.Error())
 	}
-	cg.builder.NewBr(conditionBlock)
+
+	if cg.builder.Term == nil {
+		cg.builder.NewBr(conditionBlock)
+	}
 
 	cg.builder = exitBlock
+	return nil
+}
 
+func (cg *Codegen) generateBreakStatement(stmt *ast.BreakStatement) error {
+	cg.builder.NewBr(cg.loopExitBlock)
 	return nil
 }

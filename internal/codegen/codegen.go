@@ -23,6 +23,8 @@ type Codegen struct {
 	builder *ir.Block
 	// used to transfer the return value among statements and expressions, mainly
 	blockReturnValue value.Value
+	// used for codegen of break statements
+	loopExitBlock *ir.Block
 
 	scope        Scope
 	runtimeFuncs map[string]*ir.Func

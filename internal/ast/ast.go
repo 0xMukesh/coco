@@ -402,14 +402,6 @@ func (ce *CallExpression) SetType(t cotypes.Type) cotypes.Type {
 	return t
 }
 
-// <condition> ? <consquence> : <alternative>
-type TernaryExpression struct {
-	Token       tokens.Token
-	Condition   Expression
-	Consequence Expression
-	Alternative Expression
-}
-
 // let <identifier> = <value>
 type LetStatement struct {
 	Token      tokens.Token
@@ -512,6 +504,22 @@ func (ws *WhileStatement) String() string {
 	out.WriteString(ws.Body.String())
 
 	return out.String()
+}
+
+// break
+type BreakStatement struct {
+	Token tokens.Token
+}
+
+func (bs *BreakStatement) statementNode() {}
+func (bs *BreakStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+func (bs *BreakStatement) Location() int {
+	return bs.Token.Line
+}
+func (bs *BreakStatement) String() string {
+	return bs.TokenLiteral()
 }
 
 // for ( ?(<initialization>); ?(<condition>); ?(<update>) ) { <body> }

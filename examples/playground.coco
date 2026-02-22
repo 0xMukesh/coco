@@ -1,18 +1,10 @@
-let a = 1;
-let b = 2;
-let c = if (b != 2) {
-    print("b is not equal to 2");
-    return 2.5;
-} else {
-    print("b is equal to 2");
-    return 3.1;
-}
-
-let i = 0;
+let i = 0
 
 while (i < 10) {
-    print(i);
-    i = i + 1;
+    if (i == 5) {
+        break
+    }
+    
+    print(i)
+    i = i + 1
 }
-
-print(a + b, c);

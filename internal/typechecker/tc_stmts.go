@@ -22,6 +22,8 @@ func (tc *TypeChecker) checkStatement(stmt ast.Statement) (err error) {
 		return err
 	case *ast.WhileStatement:
 		return tc.checkWhileStatement(s)
+	case *ast.BreakStatement:
+		return nil
 	default:
 		return tc.propagateOrWrapError(nil, s, "unknown statement type: %T", s)
 	}

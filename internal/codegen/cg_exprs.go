@@ -189,31 +189,55 @@ func (cg *Codegen) generateIfExpression(expr *ast.IfExpression) (value.Value, er
 	}
 
 	trueBlock := cg.mainFn.NewBlock("")
-	falseBlock := cg.mainFn.NewBlock("")
 	mergeBlock := cg.mainFn.NewBlock("")
 
-	cg.builder.NewCondBr(condition, trueBlock, falseBlock)
+	var falseBlock *ir.Block
+	if expr.Alternative != nil {
+		falseBlock = cg.mainFn.NewBlock("")
+		cg.builder.NewCondBr(condition, trueBlock, falseBlock)
+	} else {
+		cg.builder.NewCondBr(condition, trueBlock, mergeBlock)
+	}
 
-	// true block
 	cg.builder = trueBlock
 	if err := cg.generateStatement(expr.Consequence); err != nil {
 		return nil, cg.propagateOrWrapError(err, expr.Consequence, "failed to codegen if-branch: %s", err.Error())
 	}
-	cg.builder.NewBr(mergeBlock)
-	trueVal := cg.blockReturnValue
-
-	// false block
-	cg.builder = falseBlock
-	if err := cg.generateStatement(expr.Alternative); err != nil {
-		return nil, cg.propagateOrWrapError(err, expr.Alternative, "failed to codegen else-branch: %s", err.Error())
+	trueReturnVal := cg.blockReturnValue
+	trueTerminated := cg.builder.Term != nil
+	if !trueTerminated {
+		cg.builder.NewBr(mergeBlock)
 	}
-	cg.builder.NewBr(mergeBlock)
-	falseVal := cg.blockReturnValue
 
-	// merge block
+	var falseReturnVal value.Value
+	falseTerminated := false
+	if expr.Alternative != nil {
+		cg.builder = falseBlock
+		if err := cg.generateStatement(expr.Alternative); err != nil {
+			return nil, cg.propagateOrWrapError(err, expr.Alternative, "failed to codegen else-branch: %s", err.Error())
+		}
+
+		falseReturnVal = cg.blockReturnValue
+		falseTerminated = cg.builder.Term != nil
+		if !falseTerminated {
+			cg.builder.NewBr(mergeBlock)
+		}
+	}
+
+	allTerminated := expr.Alternative != nil && trueTerminated && falseTerminated
+	if allTerminated {
+		mergeBlock.NewUnreachable()
+	}
+
 	cg.builder = mergeBlock
-	if trueVal != nil && falseVal != nil {
-		cg.blockReturnValue = cg.builder.NewPhi(ir.NewIncoming(trueVal, trueBlock), ir.NewIncoming(falseVal, falseBlock))
+
+	if expr.Alternative != nil && trueReturnVal != nil && falseReturnVal != nil && !allTerminated {
+		cg.blockReturnValue = mergeBlock.NewPhi(
+			ir.NewIncoming(trueReturnVal, trueBlock),
+			ir.NewIncoming(falseReturnVal, falseBlock),
+		)
+	} else {
+		cg.blockReturnValue = nil
 	}
 
 	return cg.blockReturnValue, nil

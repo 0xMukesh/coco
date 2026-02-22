@@ -11,6 +11,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case tokens.RETURN:
 		return p.parseReturnStatement()
+	case tokens.BREAK:
+		return p.parseBreakStatement()
 	case tokens.WHILE:
 		return p.parseWhileStatement()
 	case tokens.FOR:
@@ -106,6 +108,14 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 
 	if p.isNextToken(tokens.SEMICOLON) {
 		p.readToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseBreakStatement() *ast.BreakStatement {
+	stmt := &ast.BreakStatement{
+		Token: p.currToken,
 	}
 
 	return stmt
